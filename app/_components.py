@@ -3,9 +3,9 @@ import re
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QColor
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy, QLineEdit, QCheckBox
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
 from qfluentwidgets import isDarkTheme, StrongBodyLabel, setFont, SpinBox, SubtitleLabel, DoubleSpinBox, LineEdit, \
-    ToggleButton, SwitchButton, ComboBox, MessageBoxBase, IndeterminateProgressRing, CaptionLabel
+    SwitchButton, ComboBox, MessageBoxBase, IndeterminateProgressRing, CaptionLabel
 
 from app._snippets import BaseSnippet
 
