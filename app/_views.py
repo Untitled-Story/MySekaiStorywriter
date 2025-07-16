@@ -128,6 +128,21 @@ class MainView(QFrame):
     def _on_delete_clicked(self) -> None:
         current_row = self._list_widget.currentRow()
         if current_row >= 0:
+            item = self._list_widget.takeItem(current_row)
+            deleted_num = int(item.text().split(' #')[1])
+
+            for i in range(self._list_widget.count()):
+                current_item = self._list_widget.item(i)
+
+                name, original_num_str = current_item.text().split(' #')
+                original_num = int(original_num_str)
+
+                if original_num > deleted_num:
+                    new_num = original_num - 1
+                    current_item.setText(f"{name} #{new_num}")
+
+
+
             if 0 <= current_row < len(self.current_snippets):
                 del self.current_snippets[current_row]
 
@@ -135,6 +150,8 @@ class MainView(QFrame):
                 next_row = min(current_row, self._list_widget.count() - 1)
                 self._property_widget.set_snippet(self.current_snippets[next_row])
                 self._list_widget.setCurrentRow(next_row)
+            else:
+                self._property_widget.clear_properties()
 
     def _on_save_clicked(self) -> None:
         metadata_message_box = InputMetadataMessageBox(self)
@@ -151,7 +168,7 @@ class MainView(QFrame):
 
             message_box = SaveFileMessageBox(self)
             message_box.show()
-            with open(file_path, 'w+') as f:
+            with open(file_path, 'w+', encoding='utf-8') as f:
                 snippets_data = [snippet.build() for snippet in self.current_snippets]
 
                 data = {

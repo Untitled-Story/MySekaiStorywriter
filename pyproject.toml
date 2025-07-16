@@ -3,7 +3,7 @@ name = "mysekaistorywriter"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Guang_Chen",email = "guangchen23333@gmail.com"}
+    { name = "Guang_Chen", email = "guangchen23333@gmail.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.12, <3.14"
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-package-mode=false
+package-mode = false
 
 [tool.poetry.group.dev.dependencies]
 nuitka = "^2.7.12"

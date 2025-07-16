@@ -50,7 +50,7 @@ class SnippetPropertiesWidget(QWidget):
         self._layout = QVBoxLayout(self)
         self.setLayout(self._layout)
 
-        self._clear_properties()
+        self.clear_properties()
         self._current_snippet = None
         self._current_data = {}
 
@@ -68,7 +68,7 @@ class SnippetPropertiesWidget(QWidget):
                         sub_item.widget().deleteLater()
                 item.layout().deleteLater()
 
-    def _clear_properties(self):
+    def clear_properties(self):
         self._reset()
 
         no_snippet_label = StrongBodyLabel(
@@ -84,7 +84,7 @@ class SnippetPropertiesWidget(QWidget):
 
     def _update_properties(self):
         if self._current_snippet is None:
-            self._clear_properties()
+            self.clear_properties()
             return
 
         self._reset()
