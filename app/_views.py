@@ -1,16 +1,18 @@
 import json
 
 from PySide6.QtGui import Qt
-from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QListWidgetItem, QFileDialog
-from qfluentwidgets import CommandBar, Action, setFont, ListWidget, TransparentToolButton, FluentIcon
+from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QListWidgetItem, QFileDialog, \
+    QStackedWidget
+from qfluentwidgets import CommandBar, Action, setFont, ListWidget, TransparentToolButton, FluentIcon, Pivot, \
+    TitleLabel, HorizontalSeparator
 
-from ._components import Separator, Live2DWidget, SnippetPropertiesWidget, SaveFileMessageBox, InputMetadataMessageBox
+from ._components import Live2DWidget, SnippetPropertiesWidget, SaveFileMessageBox, InputMetadataMessageBox
 from ._snippets import SNIPPETS, get_snippet, BaseSnippet
 
 
 class MainView(QFrame):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
         self.setObjectName('MainView')
 
         self._main_layout = QVBoxLayout(self)
@@ -22,7 +24,7 @@ class MainView(QFrame):
         command_bar = CommandBar()
         command_bar.setSpaing(0)
         command_bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-        setFont(command_bar, fontSize=12)
+        setFont(command_bar, fontSize=14)
 
         snippets = [snippet_type.type for snippet_type in SNIPPETS]
 
@@ -53,7 +55,7 @@ class MainView(QFrame):
         snippets_layout.addWidget(command_bar, 1)
 
         # Top Separator
-        top_separator = Separator()
+        top_separator = HorizontalSeparator()
         self._main_layout.addWidget(top_separator)
 
         # Center
@@ -82,13 +84,31 @@ class MainView(QFrame):
 
         self.current_snippets: list[BaseSnippet] = []
 
+    def _renumber_snippets(self) -> None:
+        for i in range(self._list_widget.count()):
+            item = self._list_widget.item(i)
+            snippet = self.current_snippets[i]
+            item.setText(f"{snippet.type} #{i + 1}")
+
     def _add_snippet(self, snippet: str) -> None:
         new_snippet = get_snippet(snippet).copy()
-        snippet_show_name = f'{new_snippet.type} #{len(self.current_snippets) + 1}'
 
-        self.current_snippets.append(new_snippet)
-        self._list_widget.addItem(snippet_show_name)
-        self._list_widget.setCurrentRow(len(self.current_snippets) - 1)
+        current_row = self._list_widget.currentRow()
+
+        if current_row >= 0:
+            insert_position = current_row + 1
+            snippet_show_name = f'{new_snippet.type} #{insert_position + 1}'
+            self.current_snippets.insert(insert_position, new_snippet)
+            self._list_widget.insertItem(insert_position, snippet_show_name)
+            self._list_widget.setCurrentRow(insert_position)
+
+            self._renumber_snippets()
+        else:
+            snippet_show_name = f'{new_snippet.type} #1'
+            self.current_snippets.append(new_snippet)
+            self._list_widget.addItem(snippet_show_name)
+            self._list_widget.setCurrentRow(len(self.current_snippets) - 1)
+
         self._property_widget.set_snippet(new_snippet)
 
     def _on_snippet_selected(self, item: QListWidgetItem) -> None:
@@ -128,20 +148,8 @@ class MainView(QFrame):
     def _on_delete_clicked(self) -> None:
         current_row = self._list_widget.currentRow()
         if current_row >= 0:
-            item = self._list_widget.takeItem(current_row)
-            deleted_num = int(item.text().split(' #')[1])
-
-            for i in range(self._list_widget.count()):
-                current_item = self._list_widget.item(i)
-
-                name, original_num_str = current_item.text().split(' #')
-                original_num = int(original_num_str)
-
-                if original_num > deleted_num:
-                    new_num = original_num - 1
-                    current_item.setText(f"{name} #{new_num}")
-
-
+            self._list_widget.takeItem(current_row)
+            self._renumber_snippets()
 
             if 0 <= current_row < len(self.current_snippets):
                 del self.current_snippets[current_row]
@@ -183,3 +191,91 @@ class MainView(QFrame):
                 data_json = json.dumps(data, indent=2, ensure_ascii=False)
                 f.write(data_json)
             message_box.close()
+
+
+class ModelManageFrame(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(15, 0, 0, 15)
+        main_layout.setSpacing(5)
+
+        h_layout = QHBoxLayout()
+        h_layout.setContentsMargins(0, 5, 5, 0)
+        h_layout.setSpacing(5)
+
+        main_layout.addLayout(h_layout)
+
+        l_layout = QVBoxLayout()
+        h_layout.addLayout(l_layout, 3)
+
+        r_layout = QVBoxLayout()
+        h_layout.addLayout(r_layout, 7)
+
+        title1 = TitleLabel(text='123123')
+        l_layout.addWidget(title1)
+
+        title2 = TitleLabel(text='121321')
+        r_layout.addWidget(title2)
+
+        l_layout.addStretch(1)
+        r_layout.addStretch(1)
+
+
+class ImageManageFrame(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 0, 0, 15)
+        layout.setSpacing(5)
+
+        title = TitleLabel(text='Image Manage')
+        layout.addWidget(title)
+
+        layout.addStretch(1)
+
+
+class DataView(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName('DataView')
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        self.pivot = Pivot(self)
+        self.pivot.setMaximumHeight(20)
+        self.stacked_widget = QStackedWidget(self)
+        self.stacked_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self.model_manage_frame = ModelManageFrame(self)
+        self.image_manage_frame = ImageManageFrame(self)
+
+        self.add_sub_interface(self.model_manage_frame, 'modelInterface', 'Models')
+        self.add_sub_interface(self.image_manage_frame, 'imageInterface', 'Images')
+
+        main_layout.addWidget(self.pivot)
+        main_layout.addSpacing(10)
+        main_layout.addWidget(self.stacked_widget, 1)
+
+        self.stacked_widget.setCurrentWidget(self.model_manage_frame)
+        self.pivot.setCurrentItem(self.model_manage_frame.objectName())
+        self.pivot.currentItemChanged.connect(
+            lambda k: self.stacked_widget.setCurrentWidget(self.findChild(QFrame, k))
+        )
+
+    def add_sub_interface(self, widget: QFrame, object_name: str, text: str):
+        widget.setObjectName(object_name)
+        self.stacked_widget.addWidget(widget)
+
+        self.pivot.addItem(
+            routeKey=object_name,
+            text=text,
+            onClick=lambda: self.stacked_widget.setCurrentWidget(widget)
+        )

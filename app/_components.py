@@ -3,24 +3,11 @@ import re
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QColor
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy, QFrame
 from qfluentwidgets import isDarkTheme, StrongBodyLabel, setFont, SpinBox, SubtitleLabel, DoubleSpinBox, LineEdit, \
     SwitchButton, ComboBox, MessageBoxBase, IndeterminateProgressRing, CaptionLabel
 
 from app._snippets import BaseSnippet
-
-
-class Separator(QWidget):
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFixedHeight(9)  # 调整高度
-
-    def paintEvent(self, e):
-        painter = QPainter(self)
-        painter.setPen(QColor(255, 255, 255, 21)
-                       if isDarkTheme() else QColor(0, 0, 0, 15))
-        painter.drawLine(1, 5, self.width() - 1, 5)  # 从左到右绘制
 
 
 class Live2DWidget(QWidget):

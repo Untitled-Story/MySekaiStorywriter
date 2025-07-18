@@ -6,6 +6,7 @@
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/main.build" />
       <excludeFolder url="file://$MODULE_DIR$/main.dist" />
+      <excludeFolder url="file://$MODULE_DIR$/tests" />
     </content>
     <orderEntry type="jdk" jdkName="Poetry (MySekaiStorywriter)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
