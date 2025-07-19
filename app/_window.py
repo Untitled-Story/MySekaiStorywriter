@@ -20,7 +20,7 @@ class Window(FluentWindow):
         self.addSubInterface(self.main_view, FluentIcon.EDIT, 'Edit')
 
     def _initialize_window(self):
-        self.resize(1280, 720)
+        self.resize(1536, 864)
         self.setWindowTitle("My Sekai Storywriter")
 
         desktop = QGuiApplication.primaryScreen().availableGeometry()

@@ -212,6 +212,25 @@ class TelopSnippet(BaseSnippet):
         )
 
 
+class BlackInSnippet(BaseSnippet):
+    def __init__(self, duration: int):
+        super().__init__(
+            'BlackIn',
+            {
+                'duration': duration
+            }
+        )
+
+class BlackOutSnippet(BaseSnippet):
+    def __init__(self, duration: int):
+        super().__init__(
+            'BlackOut',
+            {
+                'duration': duration
+            }
+        )
+
+
 SNIPPETS = [
     ChangeBackgroundImageSnippet(0),
     ChangeLayoutModeSnippet(LayoutModes.Normal),
@@ -221,7 +240,9 @@ SNIPPETS = [
     MotionSnippet(0, '', ''),
     MoveSnippet(0, Sides.Center, 0.0, Sides.Center, 0.0, MoveSpeed.Normal),
     TalkSnippet('', ''),
-    TelopSnippet('')
+    TelopSnippet(''),
+    BlackInSnippet(500),
+    BlackOutSnippet(500),
 ]
 
 

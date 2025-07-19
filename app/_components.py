@@ -1,11 +1,9 @@
 import enum
-import re
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPainter, QColor
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy, QFrame
-from qfluentwidgets import isDarkTheme, StrongBodyLabel, setFont, SpinBox, SubtitleLabel, DoubleSpinBox, LineEdit, \
-    SwitchButton, ComboBox, MessageBoxBase, IndeterminateProgressRing, CaptionLabel
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
+from qfluentwidgets import StrongBodyLabel, setFont, SpinBox, SubtitleLabel, DoubleSpinBox, LineEdit, \
+    SwitchButton, ComboBox, MessageBoxBase, IndeterminateProgressRing
 
 from app._snippets import BaseSnippet
 
@@ -141,24 +139,10 @@ class InputMetadataMessageBox(MessageBoxBase):
         self.title_edit = LineEdit(self)
         self.title_edit.setPlaceholderText('Input Title')
 
-        self.version_edit = LineEdit(self)
-        self.version_edit.setPlaceholderText('Input Version')
-
-        self.warning_label = CaptionLabel(text="Version is not validated (X.X.X)")
-        self.warning_label.setTextColor("#cf1010", QColor(255, 28, 32))
-
         self.viewLayout.addWidget(title_label)
         self.viewLayout.addWidget(self.title_edit)
-        self.viewLayout.addWidget(self.version_edit)
-        self.viewLayout.addWidget(self.warning_label)
-        self.warning_label.hide()
 
         self.widget.setMinimumWidth(350)
-
-    def validate(self):
-        is_valid = bool(re.match(r'^\d+\.\d+\.\d+$', self.version_edit.text()))
-        self.warning_label.setHidden(is_valid)
-        return is_valid
 
 
 class SaveFileMessageBox(MessageBoxBase):

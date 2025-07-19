@@ -182,7 +182,6 @@ class MainView(QFrame):
                 data = {
                     '$schema': 'https://raw.githubusercontent.com/GuangChen2333/MySekaiStoryteller/refs/heads/master/sekai-story.schema.json',
                     'title': metadata_message_box.title_edit.text(),
-                    'version': f'v{metadata_message_box.version_edit.text()}',
                     'models': [],
                     'images': [],
                     'snippets': snippets_data,
