@@ -117,21 +117,25 @@ class MainView(QFrame):
             self._property_widget.set_snippet(self.current_snippets[index])
 
     def swap_items(self, index1: int, index2: int) -> None:
-        if 0 <= index1 < self._list_widget.count() and 0 <= index2 < self._list_widget.count():
-            item1 = self._list_widget.takeItem(index1)
-            item2 = self._list_widget.takeItem(index2 - 1 if index2 > index1 else index2)
+        count = self._list_widget.count()
+        if 0 <= index1 < count and 0 <= index2 < count and index1 != index2:
+            if index1 < index2:
+                item2 = self._list_widget.takeItem(index2)
+                item1 = self._list_widget.takeItem(index1)
+            else:
+                item1 = self._list_widget.takeItem(index1)
+                item2 = self._list_widget.takeItem(index2)
 
             item1_name, item1_num = item1.text().split(' #')
             item2_name, item2_num = item2.text().split(' #')
-
             item1.setText(f'{item1_name} #{item2_num}')
             item2.setText(f'{item2_name} #{item1_num}')
 
             self._list_widget.insertItem(index1, item2)
             self._list_widget.insertItem(index2, item1)
 
-            self.current_snippets[index1], self.current_snippets[index2] = self.current_snippets[index2], \
-                self.current_snippets[index1]
+            self.current_snippets[index1], self.current_snippets[index2] = \
+                self.current_snippets[index2], self.current_snippets[index1]
 
     def _on_up_clicked(self) -> None:
         current_row = self._list_widget.currentRow()
@@ -149,15 +153,16 @@ class MainView(QFrame):
         current_row = self._list_widget.currentRow()
         if current_row >= 0:
             self._list_widget.takeItem(current_row)
-            self._renumber_snippets()
 
             if 0 <= current_row < len(self.current_snippets):
                 del self.current_snippets[current_row]
 
-            if self._list_widget.count() > 0:
+            self._renumber_snippets()
+
+            if self._list_widget.count() > 0 and len(self.current_snippets) > 0:
                 next_row = min(current_row, self._list_widget.count() - 1)
-                self._property_widget.set_snippet(self.current_snippets[next_row])
                 self._list_widget.setCurrentRow(next_row)
+                self._property_widget.set_snippet(self.current_snippets[next_row])
             else:
                 self._property_widget.clear_properties()
 
