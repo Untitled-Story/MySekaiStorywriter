@@ -1,6 +1,5 @@
 import copy
 import enum
-import json
 from enum import Enum
 
 
@@ -63,6 +62,9 @@ class BaseSnippet:
         def process_data(data_dict: dict):
             result = {}
             for key, value in data_dict.items():
+                if isinstance(value, str):
+                    if '<br>' in value:
+                        value = value.replace('<br>', '\n')
                 if isinstance(value, dict):
                     result[key] = process_data(value)
                 elif isinstance(value, list):
@@ -220,6 +222,7 @@ class BlackInSnippet(BaseSnippet):
                 'duration': duration
             }
         )
+
 
 class BlackOutSnippet(BaseSnippet):
     def __init__(self, duration: int):

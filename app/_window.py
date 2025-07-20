@@ -1,7 +1,7 @@
 from PySide6.QtGui import QGuiApplication
 from qfluentwidgets import FluentWindow, FluentIcon
 
-from ._views import MainView, DataView
+from ._views import MainView
 
 
 class Window(FluentWindow):
