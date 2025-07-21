@@ -9,7 +9,10 @@ readme = "README.md"
 requires-python = ">=3.12, <3.14"
 dependencies = [
     "pyside6-fluent-widgets[full] (>=1.8.3,<2.0.0)",
-    "httpx (>=0.28.1,<0.29.0)"
+    "httpx (>=0.28.1,<0.29.0)",
+    "qasync (>=0.27.1,<0.28.0)",
+    "fastapi (>=0.116.1,<0.117.0)",
+    "uvicorn (>=0.35.0,<0.36.0)",
 ]
 
 [tool.poetry]

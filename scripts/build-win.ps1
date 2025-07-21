@@ -15,7 +15,8 @@ if (Test-Path "main.dist") {
 }
 
 Write-Host "Compiling application with Nuitka..." -ForegroundColor Green
-nuitka --standalone --jobs=10 --windows-console-mode=disable --windows-icon-from-ico=icon.ico --enable-plugins=pyside6 --show-progress main.py
+pyside6-rcc app/resources/resources.qrc -o app/_resources_rc.py
+nuitka --standalone --jobs=10 --windows-console-mode=disable --windows-icon-from-ico=app/resources/icons/logo.ico --enable-plugins=pyside6 --show-progress main.py
 
 if (-not (Test-Path "main.dist\main.exe")) {
     Write-Host "Error: Nuitka compilation failed. main.exe not found." -ForegroundColor Red

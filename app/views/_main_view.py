@@ -1,13 +1,12 @@
 import json
 
-from PySide6.QtGui import Qt
-from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QListWidgetItem, QFileDialog, \
-    QStackedWidget
-from qfluentwidgets import CommandBar, Action, setFont, ListWidget, TransparentToolButton, FluentIcon, Pivot, \
-    TitleLabel, HorizontalSeparator
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QListWidgetItem, QFileDialog
+from qfluentwidgets import CommandBar, setFont, Action, TransparentToolButton, FluentIcon, HorizontalSeparator, \
+    ListWidget
 
-from ._components import Live2DWidget, SnippetPropertiesWidget, SaveFileMessageBox, InputMetadataMessageBox
-from ._snippets import SNIPPETS, get_snippet, BaseSnippet
+from app.components import SnippetPropertiesWidget, InputMetadataMessageBox, SaveFileMessageBox
+from app.snippets import SNIPPETS, BaseSnippet, get_snippet
 
 
 class MainView(QFrame):
@@ -72,8 +71,8 @@ class MainView(QFrame):
         central_splitter.addWidget(self._list_widget)
 
         # Center
-        live2d_widget = Live2DWidget()
-        central_splitter.addWidget(live2d_widget)
+        # live2d_widget = Live2DWidget()
+        # central_splitter.addWidget(live2d_widget)
 
         # Right
         self._property_widget = SnippetPropertiesWidget(self)
@@ -196,90 +195,3 @@ class MainView(QFrame):
                 f.write(data_json)
             message_box.close()
 
-
-class ModelManageFrame(QFrame):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(15, 0, 0, 15)
-        main_layout.setSpacing(5)
-
-        h_layout = QHBoxLayout()
-        h_layout.setContentsMargins(0, 5, 5, 0)
-        h_layout.setSpacing(5)
-
-        main_layout.addLayout(h_layout)
-
-        l_layout = QVBoxLayout()
-        h_layout.addLayout(l_layout, 3)
-
-        r_layout = QVBoxLayout()
-        h_layout.addLayout(r_layout, 7)
-
-        title1 = TitleLabel(text='123123')
-        l_layout.addWidget(title1)
-
-        title2 = TitleLabel(text='121321')
-        r_layout.addWidget(title2)
-
-        l_layout.addStretch(1)
-        r_layout.addStretch(1)
-
-
-class ImageManageFrame(QFrame):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 0, 0, 15)
-        layout.setSpacing(5)
-
-        title = TitleLabel(text='Image Manage')
-        layout.addWidget(title)
-
-        layout.addStretch(1)
-
-
-class DataView(QFrame):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setObjectName('DataView')
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-
-        self.pivot = Pivot(self)
-        self.pivot.setMaximumHeight(20)
-        self.stacked_widget = QStackedWidget(self)
-        self.stacked_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
-        self.model_manage_frame = ModelManageFrame(self)
-        self.image_manage_frame = ImageManageFrame(self)
-
-        self.add_sub_interface(self.model_manage_frame, 'modelInterface', 'Models')
-        self.add_sub_interface(self.image_manage_frame, 'imageInterface', 'Images')
-
-        main_layout.addWidget(self.pivot)
-        main_layout.addSpacing(10)
-        main_layout.addWidget(self.stacked_widget, 1)
-
-        self.stacked_widget.setCurrentWidget(self.model_manage_frame)
-        self.pivot.setCurrentItem(self.model_manage_frame.objectName())
-        self.pivot.currentItemChanged.connect(
-            lambda k: self.stacked_widget.setCurrentWidget(self.findChild(QFrame, k))
-        )
-
-    def add_sub_interface(self, widget: QFrame, object_name: str, text: str):
-        widget.setObjectName(object_name)
-        self.stacked_widget.addWidget(widget)
-
-        self.pivot.addItem(
-            routeKey=object_name,
-            text=text,
-            onClick=lambda: self.stacked_widget.setCurrentWidget(widget)
-        )

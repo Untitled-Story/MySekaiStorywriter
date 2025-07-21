@@ -1,31 +1,12 @@
 import enum
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
+from PySide6.QtWidgets import QWidget, QVBoxLayout
 from qfluentwidgets import StrongBodyLabel, setFont, SpinBox, SubtitleLabel, DoubleSpinBox, LineEdit, \
-    SwitchButton, ComboBox, MessageBoxBase, IndeterminateProgressRing
+    SwitchButton, ComboBox, MessageBoxBase
 
-from app._snippets import BaseSnippet
-
-
-class Live2DWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-
-class SnippetPropertyInputWidget(QWidget):
-    def __init__(self, title: str, widget: QWidget, parent=None):
-        super().__init__(parent)
-
-        self._layout = QHBoxLayout()
-        self._layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        self.setLayout(self._layout)
-
-        title_widget = SubtitleLabel(text=f'{title}: ')
-        setFont(title_widget, fontSize=16)
-        self._layout.addWidget(title_widget)
-        self._layout.addWidget(widget)
+from app.components import SnippetPropertyInputWidget
+from app.snippets import BaseSnippet
 
 
 class SnippetPropertiesWidget(QWidget):
@@ -129,46 +110,3 @@ class SnippetPropertiesWidget(QWidget):
 
         for key, value in self._current_snippet.properties.items():
             create_input_widget(key, value)
-
-
-class InputMetadataMessageBox(MessageBoxBase):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        title_label = SubtitleLabel(text='Saving your story...')
-
-        self.title_edit = LineEdit(self)
-        self.title_edit.setPlaceholderText('Input Title')
-
-        self.viewLayout.addWidget(title_label)
-        self.viewLayout.addWidget(self.title_edit)
-
-        self.widget.setMinimumWidth(350)
-
-
-class SaveFileMessageBox(MessageBoxBase):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.buttonLayout.removeWidget(self.cancelButton)
-        self.cancelButton.hide()
-        self.cancelButton.clicked.disconnect()
-        self.cancelButton.setParent(None)
-        self.cancelButton.deleteLater()
-        self.buttonLayout.update()
-        self.update()
-
-        title_label = SubtitleLabel(text='Saving your story...')
-
-        progress_ring_layout = QHBoxLayout()
-        progress_ring_layout.setContentsMargins(0, 20, 0, 20)
-        progress_ring_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-
-        progress_ring = IndeterminateProgressRing()
-        progress_ring_layout.addWidget(progress_ring)
-
-        self.yesButton.setDisabled(True)
-
-        self.viewLayout.addWidget(title_label)
-        self.viewLayout.addLayout(progress_ring_layout)
-
-        self.widget.setMinimumWidth(350)

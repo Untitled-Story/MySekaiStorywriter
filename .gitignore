@@ -292,3 +292,4 @@ pyrightconfig.json
 *.dist/
 
 tests/
+cache/
