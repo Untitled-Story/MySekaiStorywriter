@@ -4,3 +4,4 @@ from ._snippet_property_input_widget import SnippetPropertyInputWidget
 from ._snippet_properties_widget import SnippetPropertiesWidget
 from ._save_file_message_box import SaveFileMessageBox
 from ._input_metadata_message_box import InputMetadataMessageBox
+from ._downloading_flyout import DownloadingFlyout

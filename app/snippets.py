@@ -24,25 +24,21 @@ class MoveSpeed(Enum):
 class BaseSnippet:
     def __init__(self, snippet_type: str, properties: dict):
         self._type = snippet_type
-        self._properties: dict = {
+        self.properties: dict = {
             'wait': True,
             'delay': 0
         }
         if properties:
-            self._properties['data'] = properties
+            self.properties['data'] = properties
 
     @property
     def type(self):
         return self._type
 
-    @property
-    def properties(self):
-        return self._properties
-
     def set_property(self, key, value):
         if '.' in key:
             keys = key.split('.')
-            current_dict = self._properties
+            current_dict = self.properties
             for k in keys[:-1]:
                 if k in current_dict:
                     current_dict = current_dict[k]
@@ -50,12 +46,12 @@ class BaseSnippet:
                     return
             current_dict[keys[-1]] = value
         else:
-            self._properties[key] = value
+            self.properties[key] = value
 
     def copy(self):
-        new_properties = copy.deepcopy(self._properties)
+        new_properties = copy.deepcopy(self.properties)
         new_snippet = BaseSnippet(self._type, {})
-        new_snippet._properties = new_properties
+        new_snippet.properties = new_properties
         return new_snippet
 
     def build(self) -> dict:
@@ -86,7 +82,7 @@ class BaseSnippet:
         data = {
             'type': self.type
         }
-        properties = process_data(self._properties)
+        properties = process_data(self.properties)
         data.update(properties)
         return data
 

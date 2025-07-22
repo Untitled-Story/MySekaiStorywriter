@@ -7,6 +7,8 @@ class SnippetPropertyInputWidget(QWidget):
     def __init__(self, title: str, widget: QWidget, parent=None):
         super().__init__(parent)
 
+        self.subwidget = widget
+
         self._layout = QHBoxLayout()
         self._layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
@@ -15,4 +17,4 @@ class SnippetPropertyInputWidget(QWidget):
         title_widget = SubtitleLabel(text=f'{title}: ')
         setFont(title_widget, fontSize=16)
         self._layout.addWidget(title_widget)
-        self._layout.addWidget(widget)
+        self._layout.addWidget(self.subwidget)

@@ -1,3 +1,4 @@
+from PySide6.QtCore import Qt, SignalInstance, Signal
 from PySide6.QtWebEngineCore import QWebEngineSettings
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QWidget, QVBoxLayout
@@ -5,15 +6,19 @@ from qframelesswindow.webengine import FramelessWebEngineView
 
 
 class Live2DWidget(QWidget):
+    webview_loaded = Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.webview = FramelessWebEngineView(self)
-        self.webview.setStyleSheet("background: white;")
+        self.webview.setStyleSheet("background-color: #F9FAFB;")
+
         settings = self.webview.settings()
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+
         self.layout.addWidget(self.webview)
 
         html = """
@@ -21,42 +26,91 @@ class Live2DWidget(QWidget):
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Live2D Pixi.js WebView Example</title>
-            <script src="http://127.0.0.1:4521/get-md5/https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/index.min.js"></script>
+            <script src="http://127.0.0.1:4521/get/https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+            <script src="http://127.0.0.1:4521/get/https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"></script>
+            <script src="http://127.0.0.1:4521/get/https://cdn.jsdelivr.net/npm/pixi.js@7.4.3/dist/pixi.min.js"></script>
+            <script src="http://127.0.0.1:4521/get/https://cdn.jsdelivr.net/npm/@pixi/gif@2.1.1/dist/pixi-gif.js"></script>
+            <script src="http://127.0.0.1:4521/get/https://cdn.jsdelivr.net/npm/pixi-live2d-display-advanced/dist/index.min.js"></script>
             <style>
-                html, body {margin:0; padding:0; overflow:hidden; height:100%; background: #f4fbfb;}
-                #canvas {width:100vw; height:100vh; display:block; background: #f4fbfb;}
+                html, body {margin:0; padding:0; overflow:hidden; height:100%; background-color: #F9FAFB;}
+                #canvas {width:100vw; height:100vh; display:block; background-color: #F9FAFB;}
             </style>
         </head>
         <body>
             <canvas id="canvas"></canvas>
             <script>
-            const cubism4Model =
-                "http://127.0.0.1:4521/cache/v2_21miku_night/v2_21miku_night_t01.model3.json";
-            
-            (async function main() {
-                const app = new PIXI.Application({
-                    view: document.getElementById("canvas"),
-                    autoStart: true,
-                    resizeTo: document.getElementById("canvas"),
-                    backgroundColor: 0xf4fbfb
-                });
-            
-                const model4 = await PIXI.live2d.Live2DModel.from(cubism4Model);
-            
-                app.stage.addChild(model4);
+            let app = null;
+            let currentModel = null;
+            let ring = null;
+
+            function initializeApp() {
+                if (!app) {
+                    app = new PIXI.Application({
+                        view: document.getElementById("canvas"),
+                        autoStart: true,
+                        resizeTo: window,
+                        transparent: true,
+                        backgroundAlpha: 0
+                    });
+
+                    window.addEventListener('resize', () => {
+                        if (currentModel) {
+                            currentModel.x = app.screen.width / 2;
+                            currentModel.y = app.screen.height / 2;
+                        }
+                    });
+                }
                 
-                model4.anchor.set(0.5);
-                model4.scale.set(0.25);
-            
-                model4.x = app.screen.width / 2;
-                model4.y = app.screen.height / 2;
-            })();
+                if (!ring) {
+                    (async function main() {
+                        ring = await PIXI.Assets.load('http://127.0.0.1:4521/resources/ring.gif');
+                    })();
+                }
+            }
+
+            function replaceLive2DModel(modelUrl) {
+                initializeApp();
+
+                if (currentModel) {
+                    app.stage.removeChild(currentModel);
+                    currentModel = null;
+                    
+                    ring.anchor.set(0.5);
+                    ring.x = app.screen.width / 2;
+                    ring.y = app.screen.height / 2;
+                    app.stage.addChild(ring);
+                }
+
+                (async function main() {
+                    const model = await PIXI.live2d.Live2DModel.from(modelUrl, {
+                        autoFocus: false,
+                        autoHitTest: false,
+                        breathDepth: 0.5
+                    });
+
+                    app.stage.addChild(model);
+
+                    model.anchor.set(0.5);
+                    model.scale.set(0.25);
+
+                    model.x = app.screen.width / 2;
+                    model.y = app.screen.height / 2;
+
+                    currentModel = model;
+                    
+                    app.stage.removeChild(ring);
+                })();
+            }
             </script>
         </body>
         </html>
         """
         self.webview.setHtml(html)
+
+        self.webview.loadFinished.connect(self.on_load_finished)
+
+    def replace_model(self, model_url):
+        self.webview.page().runJavaScript(f'replaceLive2DModel("{model_url}");')
+
+    def on_load_finished(self):
+        self.webview_loaded.emit()

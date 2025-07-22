@@ -1,12 +1,15 @@
+import asyncio
+
 import httpx
 from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QGuiApplication, QIcon
-from qasync import asyncSlot
+from qasync import asyncSlot, QEventLoop
 from qfluentwidgets import FluentWindow, FluentIcon
 
 # noinspection PyUnresolvedReferences
 import app.resources_rc
 from .components import MySplashScreen
+from .data_model import MetaData
 from .server import FastAPIServer
 from .views import MainView, DataView
 
@@ -22,13 +25,18 @@ class Window(FluentWindow):
         self.splashScreen.set_icon_size(QSize(192, 192))
         self.splashScreen.raise_()
 
-        self.data_view = DataView(self)
-        self.main_view = MainView(self)
+        self.metadata_model = MetaData()
+
+        self.data_view = DataView(self.metadata_model, self)
+        self.main_view = MainView(self.metadata_model, self)
 
         self.data_loaded.connect(self.data_view.on_data_loaded)
+        self.data_view.model_manage_frame.live2d_preview.webview_loaded.connect(self.on_model_live2d_loaded)
 
         self._register_views()
         self._initialize_window()
+
+        self.model_live2d_loaded_event = asyncio.Event()
 
         self.server = FastAPIServer()
         if not self.server.server.started:
@@ -55,11 +63,18 @@ class Window(FluentWindow):
         self.stop_server()
         event.accept()
 
+    def on_model_live2d_loaded(self):
+        self.model_live2d_loaded_event.set()
+
     @asyncSlot(str)
     async def initialize_data(self):
         async with httpx.AsyncClient() as client:
-            response = await client.get('http://127.0.0.1:4521/get-md5/https://storage.sekai.best/sekai-live2d-assets/live2d/model_list.json')
+            response = await client.get(
+                'http://127.0.0.1:4521/get/https://storage.sekai.best/sekai-live2d-assets/live2d/model_list.json')
             model_list = response.json()
 
         self.data_loaded.emit(model_list)
+
+        await self.model_live2d_loaded_event.wait()
+
         self.splashScreen.finish()

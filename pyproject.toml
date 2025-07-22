@@ -13,6 +13,8 @@ dependencies = [
     "qasync (>=0.27.1,<0.28.0)",
     "fastapi (>=0.116.1,<0.117.0)",
     "uvicorn (>=0.35.0,<0.36.0)",
+    "mmh3 (>=5.1.0,<6.0.0)",
+    "httpx-retries (>=0.4.0,<0.5.0)",
 ]
 
 [tool.poetry]

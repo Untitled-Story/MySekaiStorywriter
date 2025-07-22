@@ -81,7 +81,7 @@ class MySplashScreen(QWidget):
         self.iconWidget.move(icon_x, start_y)
 
         progress_y = start_y + self._iconSize.height()
-        padding = 400
+        padding = 500
         self.progressBar.move(padding, progress_y + 20)
         self.progressBar.resize(self.width() - padding * 2, self.progressBar.height())
 

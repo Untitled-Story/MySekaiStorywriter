@@ -1,18 +1,133 @@
 import json
+import os
 
-from PySide6.QtCore import Qt
+import httpx
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QListWidgetItem, QFileDialog
+from httpx_retries import RetryTransport, Retry
 from qfluentwidgets import CommandBar, setFont, Action, TransparentToolButton, FluentIcon, HorizontalSeparator, \
     ListWidget
 
 from app.components import SnippetPropertiesWidget, InputMetadataMessageBox, SaveFileMessageBox
-from app.snippets import SNIPPETS, BaseSnippet, get_snippet
+from app.data_model import MetaData
+from app.snippets import SNIPPETS, BaseSnippet, get_snippet, LayoutModes, Sides, MoveSpeed
+from app.utils import extract_url_path, get_motions
+
+
+class BuildStoryThread(QThread):
+    built = Signal(dict, str)
+
+    def __init__(self, file_path: str, models: list, title: str, snippets: list[BaseSnippet], parent):
+        super().__init__(parent)
+        self.snippets = snippets
+        self.title = title
+        self.file_path = file_path
+        self.models = models
+        self.base_path = os.path.dirname(self.file_path)
+        retry = Retry(total=5, backoff_factor=0.5)
+        self.client = httpx.Client(transport=RetryTransport(retry=retry))
+
+    def download(self, path: str, filename: str, url: str) -> bytes:
+        full_path = os.path.join(path, filename)
+        with open(full_path, "wb") as file:
+            resp = self.client.get(url)
+            file.write(resp.content)
+            return resp.content
+
+    @staticmethod
+    def gen_motion_urls(info_url: str, motions_result: dict, type_: str) -> list:
+        result = []
+        base = extract_url_path(info_url)
+
+        if type_ == 'model':
+            base_motion = '/'.join(base.split('/')[:-2]) + "/motions"
+            base_facial = base_motion
+        else:
+            base_motion = base + "motion"
+            base_facial = base + "facial"
+
+        if 'motions' in motions_result[type_]:
+            for motion in motions_result[type_]['motions']:
+                result.append(f"{base_motion}/{motion}.motion3.json")
+        if 'expressions' in motions_result[type_]:
+            for expression in motions_result[type_]['expressions']:
+                result.append(f"{base_facial}/{expression}.motion3.json")
+        return result
+
+    def run(self):
+        for model in self.models:
+            model_path = os.path.join(
+                self.base_path,
+                'models',
+                model['model_name']
+            )
+            file_name = os.path.basename(model_path)
+            os.makedirs(model_path, exist_ok=True)
+
+            if not model['downloaded']:
+                base_url = extract_url_path(model['path'])
+
+                main = self.download(
+                    model_path,
+                    file_name,
+                    model['path']
+                ).decode('utf-8')
+
+                main_data = json.loads(main)
+                for file_type in main_data['FileReferences'].keys():
+                    if file_type == 'Moc' or file_type == 'Physics':
+                        path = os.path.join(model_path, main_data['FileReferences'][file_type])
+                        os.makedirs(os.path.dirname(path), exist_ok=True)
+                        self.download(
+                            os.path.dirname(path),
+                            main_data['FileReferences'][file_type],
+                            base_url + main_data['FileReferences'][file_type]
+                        )
+                    elif file_type == 'Textures':
+                        for texture in main_data['FileReferences'][file_type]:
+                            path = os.path.join(model_path, texture)
+                            os.makedirs(os.path.dirname(path), exist_ok=True)
+                            self.download(
+                                os.path.dirname(path),
+                                os.path.basename(texture),
+                                base_url + texture
+                            )
+
+            urls = []
+
+            motions_result = get_motions(model['path'])
+
+            if motions_result['model']:
+                url = motions_result['model_url']
+                urls.extend(self.gen_motion_urls(url, motions_result, 'model'))
+
+            if motions_result['special']:
+                url = motions_result['special_url']
+                urls.extend(self.gen_motion_urls(url, motions_result, 'special'))
+
+            if motions_result['common_url']:
+                url = motions_result['common_url']
+                urls.extend(self.gen_motion_urls(url, motions_result, 'common'))
+
+            print(urls)
+
+        snippets_data = [snippet.build() for snippet in self.snippets]
+        self.built.emit({
+            '$schema': 'https://raw.githubusercontent.com/GuangChen2333/MySekaiStoryteller/refs/heads/master/sekai-story.schema.json',
+            'title': self.title,
+            'models': [],
+            'images': [],
+            'snippets': snippets_data,
+        }, self.file_path)
 
 
 class MainView(QFrame):
-    def __init__(self, parent=None) -> None:
+    def __init__(self, metadata: MetaData, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName('MainView')
+
+        self.meta_data = metadata
+        self.meta_data.model_updated.connect(self._on_model_update)
 
         self._main_layout = QVBoxLayout(self)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -46,6 +161,10 @@ class MainView(QFrame):
         command_bar.addWidget(delete_button)
 
         command_bar.addSeparator()
+
+        load_button = TransparentToolButton(FluentIcon.FOLDER, parent=self)
+        load_button.clicked.connect(self._on_load_clicked)
+        command_bar.addWidget(load_button)
 
         save_button = TransparentToolButton(FluentIcon.SAVE, parent=self)
         save_button.clicked.connect(self._on_save_clicked)
@@ -83,37 +202,53 @@ class MainView(QFrame):
 
         self.current_snippets: list[BaseSnippet] = []
 
+        self.need_update = False
+        self.save_message_box = None
+
     def _renumber_snippets(self) -> None:
         for i in range(self._list_widget.count()):
             item = self._list_widget.item(i)
             snippet = self.current_snippets[i]
             item.setText(f"{snippet.type} #{i + 1}")
 
-    def _add_snippet(self, snippet: str) -> None:
-        new_snippet = get_snippet(snippet).copy()
+    def _on_model_update(self):
+        self.need_update = True
 
+    def showEvent(self, event, /):
+        super().showEvent(event)
+        if self.need_update:
+            index = self._list_widget.currentRow()
+            if 0 <= index < len(self.current_snippets):
+                self._property_widget.set_snippet(self.current_snippets[index], self.meta_data)
+            self.need_update = False
+
+    def _add_snippet_instance(self, snippet: BaseSnippet) -> None:
         current_row = self._list_widget.currentRow()
 
         if current_row >= 0:
             insert_position = current_row + 1
-            snippet_show_name = f'{new_snippet.type} #{insert_position + 1}'
-            self.current_snippets.insert(insert_position, new_snippet)
+            snippet_show_name = f'{snippet.type} #{insert_position + 1}'
+            self.current_snippets.insert(insert_position, snippet)
             self._list_widget.insertItem(insert_position, snippet_show_name)
             self._list_widget.setCurrentRow(insert_position)
 
             self._renumber_snippets()
         else:
-            snippet_show_name = f'{new_snippet.type} #1'
-            self.current_snippets.append(new_snippet)
+            snippet_show_name = f'{snippet.type} #1'
+            self.current_snippets.append(snippet)
             self._list_widget.addItem(snippet_show_name)
             self._list_widget.setCurrentRow(len(self.current_snippets) - 1)
 
-        self._property_widget.set_snippet(new_snippet)
+        self._property_widget.set_snippet(snippet, self.meta_data)
+
+    def _add_snippet(self, snippet: str) -> None:
+        new_snippet = get_snippet(snippet).copy()
+        self._add_snippet_instance(new_snippet)
 
     def _on_snippet_selected(self, item: QListWidgetItem) -> None:
         index = self._list_widget.row(item)
         if 0 <= index < len(self.current_snippets):
-            self._property_widget.set_snippet(self.current_snippets[index])
+            self._property_widget.set_snippet(self.current_snippets[index], self.meta_data)
 
     def swap_items(self, index1: int, index2: int) -> None:
         count = self._list_widget.count()
@@ -161,7 +296,7 @@ class MainView(QFrame):
             if self._list_widget.count() > 0 and len(self.current_snippets) > 0:
                 next_row = min(current_row, self._list_widget.count() - 1)
                 self._list_widget.setCurrentRow(next_row)
-                self._property_widget.set_snippet(self.current_snippets[next_row])
+                self._property_widget.set_snippet(self.current_snippets[next_row], self.meta_data)
             else:
                 self._property_widget.clear_properties()
 
@@ -178,20 +313,78 @@ class MainView(QFrame):
             if file_path is None or file_path == '':
                 return
 
-            message_box = SaveFileMessageBox(self)
-            message_box.show()
-            with open(file_path, 'w+', encoding='utf-8') as f:
-                snippets_data = [snippet.build() for snippet in self.current_snippets]
+            self.save_message_box = SaveFileMessageBox(self)
+            self.save_message_box.show()
 
-                data = {
-                    '$schema': 'https://raw.githubusercontent.com/GuangChen2333/MySekaiStoryteller/refs/heads/master/sekai-story.schema.json',
-                    'title': metadata_message_box.title_edit.text(),
-                    'models': [],
-                    'images': [],
-                    'snippets': snippets_data,
-                }
+            build_thread = BuildStoryThread(
+                file_path,
+                self.meta_data.models,
+                metadata_message_box.title_edit.text(),
+                self.current_snippets,
+                self
+            )
+            build_thread.built.connect(self._on_story_built)
+            build_thread.start()
 
-                data_json = json.dumps(data, indent=2, ensure_ascii=False)
-                f.write(data_json)
-            message_box.close()
+    def _on_story_built(self, data: dict, file_path: str) -> None:
+        with open(file_path, 'w+', encoding='utf-8') as f:
+            data_json = json.dumps(data, indent=2, ensure_ascii=False)
+            f.write(data_json)
+        self.save_message_box.close()
 
+    def _on_load_clicked(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load your story",
+            "",
+            "Sekai Story File (*.sekai-story.json)"
+        )
+
+        if file_path is None or file_path == '':
+            return
+
+        base_path = os.path.dirname(file_path)
+
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data_json = json.loads(f.read())
+            models_def = data_json['models']
+            images_def = data_json['images']
+            snippets: list = data_json['snippets']
+
+        self.current_snippets = []
+        self._list_widget.clear()
+        self._property_widget.reset()
+        self.meta_data.reset_all()
+
+        for model in models_def:
+            self.meta_data.add_model(
+                model['model'].split('/')[-1],
+                os.path.join(
+                    base_path,
+                    "models",
+                    model['model']
+                ),
+                True,
+                id_=model['id']
+            )
+
+        for snippet in snippets:
+            snippet_type = snippet['type']
+            snippet_instance = get_snippet(snippet_type).copy()
+
+            properties = snippet.copy()
+            del properties['type']
+
+            if snippet_instance.type == 'ChangeLayoutMode':
+                properties['data']['mode'] = LayoutModes(properties['data']['mode'])
+
+            if "data" in properties:
+                if "from" in properties['data']:
+                    properties['data']['from']['side'] = Sides(properties['data']['from']['side'])
+                if "to" in properties['data']:
+                    properties['data']['to']['side'] = Sides(properties['data']['to']['side'])
+                if "moveSpeed" in properties['data']:
+                    properties['data']['moveSpeed'] = MoveSpeed(properties['data']['moveSpeed'])
+
+            snippet_instance.properties = properties
+            self._add_snippet_instance(snippet_instance)
