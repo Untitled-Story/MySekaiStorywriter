@@ -102,7 +102,7 @@ class BuildStoryThread(QThread):
                 if os.path.exists(model_path):
                     print(f"{model_path} already exists, skipping.")
                     model['downloaded'] = True
-                    break
+                    continue
 
                 os.makedirs(model_dir, exist_ok=True)
                 base_url = extract_url_path(model['path'])
@@ -166,7 +166,7 @@ class BuildStoryThread(QThread):
             else:
                 if os.path.exists(model_path):
                     print(f"{model_path} already exists, skipping.")
-                    break
+                    continue
 
                 shutil.copytree(os.path.dirname(model['path']), model_dir)
 
