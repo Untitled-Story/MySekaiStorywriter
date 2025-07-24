@@ -1,14 +1,15 @@
+import json
 import os
+import socket
+from threading import Thread
+from urllib.parse import unquote_plus, quote_plus
 
 import httpx
 import mmh3
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-from threading import Thread
-from urllib.parse import unquote_plus, quote_plus
-import json
+from fastapi.responses import FileResponse, Response
 
 
 def calculate_md5_string(text: str) -> str:
@@ -16,16 +17,25 @@ def calculate_md5_string(text: str) -> str:
     hs = str(hex(r))
     return hs[2:]
 
+def get_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('127.0.0.1', 0))
+        return s.getsockname()[1]
 
 class FastAPIServer:
-    def __init__(self, host: str = "127.0.0.1", port: int = 4521):
+    def __init__(self, host: str = "127.0.0.1", port: int = 0):
         self.host = host
-        self.port = port
+
+        if port == 0:
+            self.port = get_free_port()
+        else:
+            self.port = port
+
         self.app = self.create_app()
         self.config = uvicorn.Config(
             app=self.app,
             host=host,
-            port=port,
+            port=self.port,
             log_level="info",
             workers=1,
             loop="asyncio"

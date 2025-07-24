@@ -3,7 +3,9 @@ import asyncio
 import httpx
 from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QGuiApplication, QIcon
-from qasync import asyncSlot, QEventLoop
+from PySide6.QtWidgets import QSizePolicy
+from httpx_retries import RetryTransport, Retry
+from qasync import asyncSlot
 from qfluentwidgets import FluentWindow, FluentIcon
 
 # noinspection PyUnresolvedReferences
@@ -20,6 +22,13 @@ class Window(FluentWindow):
     def __init__(self):
         super().__init__()
 
+        self.server = FastAPIServer()
+        if not self.server.server.started:
+            self.server.start()
+
+        # noinspection HttpUrlsUsage
+        self.server_host = f"http://{self.server.host}:{self.server.port}"
+
         self.model_list = []
         self.splashScreen = MySplashScreen(QIcon(':/icons/logo.ico'), self)
         self.splashScreen.set_icon_size(QSize(192, 192))
@@ -27,8 +36,8 @@ class Window(FluentWindow):
 
         self.metadata_model = MetaData()
 
-        self.data_view = DataView(self.metadata_model, self)
-        self.main_view = MainView(self.metadata_model, self)
+        self.data_view = DataView(self.metadata_model, self.server_host, self)
+        self.main_view = MainView(self.metadata_model, self.server_host, self)
 
         self.data_loaded.connect(self.data_view.on_data_loaded)
         self.data_view.model_manage_frame.live2d_preview.webview_loaded.connect(self.on_model_live2d_loaded)
@@ -38,16 +47,13 @@ class Window(FluentWindow):
 
         self.model_live2d_loaded_event = asyncio.Event()
 
-        self.server = FastAPIServer()
-        if not self.server.server.started:
-            self.server.start()
-
     def _register_views(self):
-        self.addSubInterface(self.data_view, FluentIcon.LIBRARY, 'Library')
         self.addSubInterface(self.main_view, FluentIcon.EDIT, 'Edit')
+        self.addSubInterface(self.data_view, FluentIcon.LIBRARY, 'Library')
 
     def _initialize_window(self):
         self.resize(1536, 864)
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.setWindowTitle("My Sekai Storywriter")
 
         desktop = QGuiApplication.primaryScreen().availableGeometry()
@@ -68,9 +74,11 @@ class Window(FluentWindow):
 
     @asyncSlot(str)
     async def initialize_data(self):
-        async with httpx.AsyncClient() as client:
+        retry = Retry(total=3, backoff_factor=0.5)
+        async with httpx.AsyncClient(transport=RetryTransport(retry=retry)) as client:
+            print(self.server_host)
             response = await client.get(
-                'http://127.0.0.1:4521/get/https://storage.sekai.best/sekai-live2d-assets/live2d/model_list.json')
+                f'{self.server_host}/get/https://storage.sekai.best/sekai-live2d-assets/live2d/model_list.json')
             model_list = response.json()
 
         self.data_loaded.emit(model_list)

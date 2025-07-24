@@ -1,6 +1,5 @@
-from PySide6.QtCore import Qt, SignalInstance, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWebEngineCore import QWebEngineSettings
-from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from qframelesswindow.webengine import FramelessWebEngineView
 
@@ -8,8 +7,10 @@ from qframelesswindow.webengine import FramelessWebEngineView
 class Live2DWidget(QWidget):
     webview_loaded = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, server_host: str, parent=None):
         super().__init__(parent)
+        self.server_host = server_host
+
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.webview = FramelessWebEngineView(self)
@@ -26,11 +27,11 @@ class Live2DWidget(QWidget):
         <html>
         <head>
             <meta charset="utf-8">
-            <script src="http://127.0.0.1:4521/get/https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
-            <script src="http://127.0.0.1:4521/get/https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"></script>
-            <script src="http://127.0.0.1:4521/get/https://cdn.jsdelivr.net/npm/pixi.js@7.4.3/dist/pixi.min.js"></script>
-            <script src="http://127.0.0.1:4521/get/https://cdn.jsdelivr.net/npm/@pixi/gif@2.1.1/dist/pixi-gif.js"></script>
-            <script src="http://127.0.0.1:4521/get/https://cdn.jsdelivr.net/npm/pixi-live2d-display-advanced/dist/index.min.js"></script>
+            <script src="[[SERVER_HOST]]/get/https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"></script>
+            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/pixi.js@7.4.3/dist/pixi.min.js"></script>
+            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/@pixi/gif@2.1.1/dist/pixi-gif.js"></script>
+            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/pixi-live2d-display-advanced/dist/index.min.js"></script>
             <style>
                 html, body {margin:0; padding:0; overflow:hidden; height:100%; background-color: #F9FAFB;}
                 #canvas {width:100vw; height:100vh; display:block; background-color: #F9FAFB;}
@@ -60,12 +61,6 @@ class Live2DWidget(QWidget):
                         }
                     });
                 }
-                
-                if (!ring) {
-                    (async function main() {
-                        ring = await PIXI.Assets.load('http://127.0.0.1:4521/resources/ring.gif');
-                    })();
-                }
             }
 
             function replaceLive2DModel(modelUrl) {
@@ -74,14 +69,18 @@ class Live2DWidget(QWidget):
                 if (currentModel) {
                     app.stage.removeChild(currentModel);
                     currentModel = null;
-                    
+                }
+
+                (async function main() {
+                    if (!ring) {
+                        ring = await PIXI.Assets.load('[[SERVER_HOST]]/resources/ring.gif');
+                    }
+                
                     ring.anchor.set(0.5);
                     ring.x = app.screen.width / 2;
                     ring.y = app.screen.height / 2;
                     app.stage.addChild(ring);
-                }
-
-                (async function main() {
+                
                     const model = await PIXI.live2d.Live2DModel.from(modelUrl, {
                         autoFocus: false,
                         autoHitTest: false,
@@ -104,7 +103,7 @@ class Live2DWidget(QWidget):
             </script>
         </body>
         </html>
-        """
+        """.replace("[[SERVER_HOST]]", self.server_host)
         self.webview.setHtml(html)
 
         self.webview.loadFinished.connect(self.on_load_finished)

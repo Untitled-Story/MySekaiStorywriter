@@ -1,5 +1,7 @@
+import asyncio
 import json
 import os
+import shutil
 
 import httpx
 from PySide6.QtCore import Qt, QThread, Signal
@@ -17,19 +19,20 @@ from app.utils import extract_url_path, get_motions
 class BuildStoryThread(QThread):
     built = Signal(dict, str)
 
-    def __init__(self, file_path: str, models: list, title: str, snippets: list[BaseSnippet], parent):
+    def __init__(self, file_path: str, metadata: MetaData, title: str, snippets: list[BaseSnippet], parent):
         super().__init__(parent)
         self.snippets = snippets
         self.title = title
         self.file_path = file_path
-        self.models = models
+        self.metadata = metadata
+        self.models = metadata.models
         self.base_path = os.path.dirname(self.file_path)
-        retry = Retry(total=5, backoff_factor=0.5)
-        self.client = httpx.Client(transport=RetryTransport(retry=retry))
+        self.retry = Retry(total=5, backoff_factor=0.5)
+        self.client = httpx.Client(transport=RetryTransport(retry=self.retry))
 
     def download(self, path: str, filename: str, url: str) -> bytes:
         full_path = os.path.join(path, filename)
-        with open(full_path, "wb") as file:
+        with open(full_path, "wb+") as file:
             resp = self.client.get(url)
             file.write(resp.content)
             return resp.content
@@ -54,21 +57,58 @@ class BuildStoryThread(QThread):
                 result.append(f"{base_facial}/{expression}.motion3.json")
         return result
 
+    @staticmethod
+    async def download_motion_and_save(client: httpx.AsyncClient, url: str, motion_path: str, main_data: dict):
+        r = await client.get(url)
+        m_file_name_ext = os.path.basename(r.url.path)
+        m_file_name = m_file_name_ext.split('.')[0]
+        file_path = os.path.join(motion_path, m_file_name_ext)
+        main_data["FileReferences"]["Motions"][m_file_name] = [{
+            "FadeInTime": 0.5,
+            "FadeOutTime": 0.5,
+            "File": f"motions/{m_file_name_ext}"
+        }]
+        with open(file_path, "wb") as file:
+            file.write(r.content)
+
+    async def download_motions(self, urls: list, motion_path: str, main_data: dict):
+        async with httpx.AsyncClient(transport=RetryTransport(retry=self.retry)) as client:
+            tasks = [self.download_motion_and_save(client, url, motion_path, main_data) for url in urls]
+            await asyncio.gather(*tasks)
+
     def run(self):
+        models_data = []
         for model in self.models:
+            rel_model_path = str(os.path.join(
+                model['model_name'],
+                model['model_name'] + ".model3.json"
+            )).replace("\\", "/")
+
             model_path = os.path.join(
                 self.base_path,
                 'models',
-                model['model_name']
+                rel_model_path
             )
+
+            model_dir = os.path.dirname(model_path)
             file_name = os.path.basename(model_path)
-            os.makedirs(model_path, exist_ok=True)
+
+            models_data.append({
+                "id": model['id'],
+                "model": rel_model_path,
+            })
 
             if not model['downloaded']:
+                if os.path.exists(model_path):
+                    print(f"{model_path} already exists, skipping.")
+                    model['downloaded'] = True
+                    break
+
+                os.makedirs(model_dir, exist_ok=True)
                 base_url = extract_url_path(model['path'])
 
                 main = self.download(
-                    model_path,
+                    model_dir,
                     file_name,
                     model['path']
                 ).decode('utf-8')
@@ -76,7 +116,7 @@ class BuildStoryThread(QThread):
                 main_data = json.loads(main)
                 for file_type in main_data['FileReferences'].keys():
                     if file_type == 'Moc' or file_type == 'Physics':
-                        path = os.path.join(model_path, main_data['FileReferences'][file_type])
+                        path = os.path.join(model_dir, main_data['FileReferences'][file_type])
                         os.makedirs(os.path.dirname(path), exist_ok=True)
                         self.download(
                             os.path.dirname(path),
@@ -85,7 +125,7 @@ class BuildStoryThread(QThread):
                         )
                     elif file_type == 'Textures':
                         for texture in main_data['FileReferences'][file_type]:
-                            path = os.path.join(model_path, texture)
+                            path = os.path.join(model_dir, texture)
                             os.makedirs(os.path.dirname(path), exist_ok=True)
                             self.download(
                                 os.path.dirname(path),
@@ -93,39 +133,76 @@ class BuildStoryThread(QThread):
                                 base_url + texture
                             )
 
-            urls = []
+                urls = []
 
-            motions_result = get_motions(model['path'])
+                motions_result = get_motions(model['path'])
 
-            if motions_result['model']:
-                url = motions_result['model_url']
-                urls.extend(self.gen_motion_urls(url, motions_result, 'model'))
+                if motions_result['model']:
+                    url = motions_result['model_url']
+                    urls.extend(self.gen_motion_urls(url, motions_result, 'model'))
 
-            if motions_result['special']:
-                url = motions_result['special_url']
-                urls.extend(self.gen_motion_urls(url, motions_result, 'special'))
+                if motions_result['special']:
+                    url = motions_result['special_url']
+                    urls.extend(self.gen_motion_urls(url, motions_result, 'special'))
 
-            if motions_result['common_url']:
-                url = motions_result['common_url']
-                urls.extend(self.gen_motion_urls(url, motions_result, 'common'))
+                if motions_result['common_url']:
+                    url = motions_result['common_url']
+                    urls.extend(self.gen_motion_urls(url, motions_result, 'common'))
 
-            print(urls)
+                motion_path = os.path.join(model_dir, 'motions')
+                os.makedirs(motion_path, exist_ok=True)
+
+                main_data["FileReferences"]["Motions"] = {}
+                for i in range(0, len(urls), 40):
+                    chunk = urls[i:i + 40]
+                    asyncio.run(
+                        self.download_motions(chunk, motion_path, main_data)
+                    )
+
+                with open(model_path, "w+") as file:
+                    file.write(json.dumps(main_data, indent=2, ensure_ascii=False))
+
+                model['downloaded'] = True
+            else:
+                if os.path.exists(model_path):
+                    print(f"{model_path} already exists, skipping.")
+                    break
+
+                shutil.copytree(os.path.dirname(model['path']), model_dir)
+
+        images_data = []
+        image_dir = os.path.join(self.base_path, 'images')
+        os.makedirs(image_dir, exist_ok=True)
+        for image in self.metadata.images:
+            file_name_ext = os.path.basename(image['path'])
+            img_path = os.path.join(image_dir, file_name_ext)
+            if os.path.exists(img_path):
+                print(f"{img_path} already exists, skipping.")
+            else:
+                shutil.copy(image['path'], img_path)
+            images_data.append({
+                "id": image['id'],
+                "image": f'{file_name_ext}'
+            })
+
+
 
         snippets_data = [snippet.build() for snippet in self.snippets]
         self.built.emit({
             '$schema': 'https://raw.githubusercontent.com/GuangChen2333/MySekaiStoryteller/refs/heads/master/sekai-story.schema.json',
             'title': self.title,
-            'models': [],
-            'images': [],
+            'models': models_data,
+            'images': images_data,
             'snippets': snippets_data,
         }, self.file_path)
 
 
 class MainView(QFrame):
-    def __init__(self, metadata: MetaData, parent=None) -> None:
+    def __init__(self, metadata: MetaData, server_host: str, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName('MainView')
 
+        self.server_host = server_host
         self.meta_data = metadata
         self.meta_data.model_updated.connect(self._on_model_update)
 
@@ -318,7 +395,7 @@ class MainView(QFrame):
 
             build_thread = BuildStoryThread(
                 file_path,
-                self.meta_data.models,
+                self.meta_data,
                 metadata_message_box.title_edit.text(),
                 self.current_snippets,
                 self
@@ -357,8 +434,9 @@ class MainView(QFrame):
         self.meta_data.reset_all()
 
         for model in models_def:
+            model_name = model['model'].split('/')[-1].split('.')[0]
             self.meta_data.add_model(
-                model['model'].split('/')[-1],
+                model_name,
                 os.path.join(
                     base_path,
                     "models",
@@ -366,6 +444,18 @@ class MainView(QFrame):
                 ),
                 True,
                 id_=model['id']
+            )
+
+        for image in images_def:
+            image_name = image['image'].split('/')[-1].split('.')[0]
+            self.meta_data.add_image(
+                image_name,
+                os.path.join(
+                    base_path,
+                    "images",
+                    image['image']
+                ),
+                image['id']
             )
 
         for snippet in snippets:

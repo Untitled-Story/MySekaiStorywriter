@@ -1,14 +1,14 @@
-import asyncio
 import os
 
-from PySide6.QtCore import Signal, SignalInstance, QThread
-from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSizePolicy, QStackedWidget, QFileDialog
-from qfluentwidgets import ListWidget, Pivot, \
-    TitleLabel, HorizontalSeparator, VerticalSeparator, SubtitleLabel, EditableComboBox, PushButton, PrimaryPushButton, \
-    Flyout, InfoBarIcon, FlyoutAnimationType, ComboBox, TransparentPushButton, FluentIcon, TeachingTip, \
-    TeachingTipTailPosition
+from PySide6.QtCore import Signal, QThread
+from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSizePolicy, QStackedWidget, QFileDialog, \
+    QListWidgetItem
+from qfluentwidgets import Pivot, \
+    HorizontalSeparator, VerticalSeparator, SubtitleLabel, EditableComboBox, PushButton, PrimaryPushButton, \
+    Flyout, InfoBarIcon, FlyoutAnimationType, ComboBox, FluentIcon, TeachingTip, \
+    TeachingTipTailPosition, ListWidget
 
-from app.components import Live2DWidget, DownloadingFlyout
+from app.components import Live2DWidget, DownloadingFlyout, ImageDisplayWidget
 from app.data_model import MetaData
 from app.utils import FuzzyCompleter, build_model_base_json
 
@@ -16,22 +16,25 @@ from app.utils import FuzzyCompleter, build_model_base_json
 class AddModelThread(QThread):
     model_added = Signal(str)
 
-    def __init__(self, meta_data, model_, model_list, parent=None):
+    def __init__(self, meta_data, model_, model_list, server_host: str, parent=None):
         super().__init__(parent)
+        self.server_host = server_host
         self.meta_data = meta_data
         self.model = model_
         self.model_list = model_list
 
     def run(self):
-        data = self.meta_data.add_model(self.model, build_model_base_json(self.model_list, self.model), False)
+        data = self.meta_data.add_model(self.model,
+                                        build_model_base_json(self.server_host, self.model_list, self.model), False)
         self.model_added.emit(f'{self.model} #{data["id"]}')
 
 
 class ModelManageFrame(QFrame):
-    def __init__(self, metadata: MetaData, parent=None):
+    def __init__(self, metadata: MetaData, server_host: str, parent=None):
         super().__init__(parent)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
+        self.server_host = server_host
         self.meta_data = metadata
         self.meta_data.model_updated.connect(self.on_model_updated)
 
@@ -45,20 +48,20 @@ class ModelManageFrame(QFrame):
 
         main_layout.addLayout(h_layout)
 
-        l_layout = QVBoxLayout()
-        h_layout.addLayout(l_layout, 2)
+        self.l_layout = QVBoxLayout()
+        h_layout.addLayout(self.l_layout, 2)
 
         h_layout.addWidget(VerticalSeparator())
 
-        r_layout = QVBoxLayout()
-        h_layout.addLayout(r_layout, 8)
+        self.r_layout = QVBoxLayout()
+        h_layout.addLayout(self.r_layout, 8)
 
         title1 = SubtitleLabel(text='Online Model List')
         title1.setStyleSheet("padding-bottom:3px;")
-        l_layout.addWidget(title1)
+        self.l_layout.addWidget(title1)
 
         l_v_layout = QVBoxLayout()
-        l_layout.addLayout(l_v_layout)
+        self.l_layout.addLayout(l_v_layout)
 
         self.online_model_combo_box = EditableComboBox()
         self.online_model_combo_box.returnPressed.disconnect()
@@ -101,10 +104,10 @@ class ModelManageFrame(QFrame):
         l_v_layout.setStretch(0, 1)
         l_v_layout.setStretch(1, 1)
 
-        self.live2d_preview = Live2DWidget(self)
-        r_layout.addWidget(self.live2d_preview)
+        self.live2d_preview = Live2DWidget(self.server_host, self)
+        self.r_layout.addWidget(self.live2d_preview)
 
-        l_layout.addStretch(1)
+        self.l_layout.addStretch(1)
 
         self.model_list = []
         self.display_model_list = []
@@ -208,6 +211,7 @@ class ModelManageFrame(QFrame):
             meta_data=self.meta_data,
             model_=model,
             model_list=self.model_list,
+            server_host=self.server_host,
             parent=self
         )
         add_model_thread.model_added.connect(self.on_model_added)
@@ -243,31 +247,163 @@ class ModelManageFrame(QFrame):
             )
             return
 
-        model_url = build_model_base_json(self.model_list, model)
+        model_url = build_model_base_json(self.server_host, self.model_list, model)
         self.live2d_preview.replace_model(model_url)
 
 
 class ImageManageFrame(QFrame):
-    def __init__(self, parent=None):
+    def __init__(self, meta_data: MetaData, parent=None):
         super().__init__(parent)
+        self.meta_data = meta_data
+        self.meta_data.image_updated.connect(self.on_image_updated)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 0, 0, 15)
-        layout.setSpacing(5)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(20, 0, 20, 0)
+        main_layout.setSpacing(5)
 
-        title = TitleLabel(text='Image Manage')
-        layout.addWidget(title)
+        h_layout = QHBoxLayout()
+        h_layout.setContentsMargins(0, 5, 0, 0)
+        h_layout.setSpacing(5)
+        main_layout.addLayout(h_layout)
 
-        layout.addStretch(1)
+        self.l_layout = QVBoxLayout()
+        h_layout.addLayout(self.l_layout, 2)
+
+        h_layout.addWidget(VerticalSeparator())
+
+        self.r_layout = QHBoxLayout()
+        self.r_layout.setContentsMargins(5, 0, 0, 0)
+        h_layout.addLayout(self.r_layout, 8)
+
+        top_layout = QHBoxLayout()
+        top_layout.setSpacing(15)
+        self.l_layout.addLayout(top_layout)
+
+        add_btn = PrimaryPushButton(text="Add Image", icon=FluentIcon.ADD, parent=self)
+        add_btn.clicked.connect(self.add_image)
+        top_layout.addWidget(add_btn)
+
+        delete_btn = PushButton(text="Delete Selected", icon=FluentIcon.DELETE, parent=self)
+        delete_btn.clicked.connect(self.remove_image)
+        top_layout.addWidget(delete_btn)
+
+        top_layout.addStretch(1)
+
+        self.image_list_widget = ListWidget(self)
+        self.image_list_widget.itemClicked.connect(self.on_image_clicked)
+        self.l_layout.addWidget(self.image_list_widget)
+
+        self.image_widget = ImageDisplayWidget()
+        self.r_layout.addWidget(self.image_widget, 1)
+        self.l_layout.addStretch(1)
+
+        self.images = []
+
+        self.need_update = False
+
+    def on_image_updated(self):
+        self.need_update = True
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.need_update:
+            self.images = []
+            for image in self.meta_data.images:
+                filename = os.path.basename(image['path'])
+                self.images.append({
+                    'name': f'{filename} {image["id"]}',
+                    'path': image['path'],
+                    'index': image["id"]
+                })
+
+            current_row = self.image_list_widget.currentRow()
+            self.image_list_widget.clear()
+            self.image_list_widget.addItems([f'{data["name"]} #{data["id"]}' for data in self.meta_data.images])
+            if current_row == -1 and self.image_list_widget.count() > 0:
+                i = [data['path'] for data in self.images if data['index'] == 0][0]
+                self.image_list_widget.setCurrentRow(0)
+                self.image_widget.display_image(i)
+            elif current_row <= self.image_list_widget.count() - 1:
+                i = [data['path'] for data in self.images if data['index'] == current_row][0]
+                self.image_list_widget.setCurrentRow(current_row)
+                self.image_widget.display_image(i)
+
+    def renumber_images(self):
+        images_new = []
+        for i in range(self.image_list_widget.count()):
+            item = self.image_list_widget.item(i)
+            text_raw = item.text().split(' ')[0]
+            num_raw = int(item.text().split(' #')[1])
+
+            image_data = self.images[num_raw]
+            image = [image for image in self.meta_data.images if image['id'] == i][0]
+
+            show_name = f'{text_raw} #{image["id"]}'
+            images_new.append({
+                'name': show_name,
+                'path': image_data['path'],
+                'index': i
+            })
+            item.setText(show_name)
+        self.images = images_new
+
+    def remove_image(self):
+        if len(self.meta_data.images) > 0 and self.image_list_widget.count() > 0:
+            index = self.image_list_widget.currentRow()
+
+            i = [image for image in self.images if image['index'] == index][0]
+
+            self.image_list_widget.takeItem(index)
+
+            self.image_list_widget.setCurrentRow(index)
+
+            self.renumber_images()
+            self.meta_data.remove_image(i['index'])
+            self.image_widget.clear()
+
+    def on_image_clicked(self, item: QListWidgetItem):
+        index = self.image_list_widget.row(item)
+        if 0 <= index < len(self.images):
+            i = [image['path'] for image in self.images if image['index'] == index][0]
+            self.image_widget.display_image(i)
+
+    def add_image_instance(self, path: str):
+        filename = os.path.basename(path)
+        data = self.meta_data.add_image(filename, path)
+        self.image_widget.display_image(path)
+        insert_pos = data["id"]
+        show_name = f'{filename} #{insert_pos}'
+
+        self.image_list_widget.insertItem(insert_pos, show_name)
+        self.images.append({
+            'name': show_name,
+            'path': path,
+            'index': insert_pos
+        })
+
+        self.image_list_widget.setCurrentRow(insert_pos)
+
+    def add_image(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select a image file",
+            "",
+            "Image File (*.jpg *.jpeg *.png *.avif *.webp *.gif)"
+        )
+
+        if not file_path:
+            return
+
+        self.add_image_instance(file_path)
 
 
 class DataView(QFrame):
-    def __init__(self, metadata: MetaData, parent=None):
+    def __init__(self, metadata: MetaData, server_host: str, parent=None):
         super().__init__(parent)
         self.setObjectName('DataView')
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-
+        self.server_host = server_host
         self.meta_data = metadata
 
         main_layout = QVBoxLayout(self)
@@ -279,8 +415,8 @@ class DataView(QFrame):
         self.stacked_widget = QStackedWidget(self)
         self.stacked_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        self.model_manage_frame = ModelManageFrame(self.meta_data, self)
-        self.image_manage_frame = ImageManageFrame(self)
+        self.model_manage_frame = ModelManageFrame(self.meta_data, self.server_host, self)
+        self.image_manage_frame = ImageManageFrame(self.meta_data, self)
 
         self.add_sub_interface(self.model_manage_frame, 'modelInterface', 'Models')
         self.add_sub_interface(self.image_manage_frame, 'imageInterface', 'Images')

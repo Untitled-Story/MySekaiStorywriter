@@ -1,10 +1,9 @@
 import json
 from typing import Optional
 
-import httpx
 from PySide6.QtCore import Signal, QObject
 
-from app.utils import extract_url_path, get_motions
+from app.utils import get_motions
 
 
 class MetaData(QObject):
@@ -102,14 +101,38 @@ class MetaData(QObject):
         self._models.append(data)
         return data
 
-    def add_image(self, image_path: str) -> dict:
-        id_ = len(self._images)
+    def renumber_images(self):
+        result = []
+        i = 0
+        for image in self._images:
+            result.append({
+                "id": i,
+                "name": image['name'],
+                "path": image['path'],
+            })
+            i += 1
+        self._images = result
+
+    def remove_image(self, id_: int):
+        i = [image for image in self._images if image['id'] == id_][0]
+        self._images.remove(i)
+        self.renumber_images()
+        self.image_updated.emit(i)
+
+    def add_image(self, image_name: str, image_path: str, id_: Optional[int] = None) -> dict:
+        if not id_:
+            id_ = len(self._images)
+
+        self.renumber_images()
         data = {
             "id": id_,
-            "image": image_path
+            "name": image_name,
+            "path": image_path
         }
+
         self.image_updated.emit(data)
-        self.images.append(data)
+        self._images.append(data)
+
         return data
 
     def reset_model(self) -> None:

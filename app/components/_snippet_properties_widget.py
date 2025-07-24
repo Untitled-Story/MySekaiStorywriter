@@ -1,14 +1,14 @@
 import enum
 from typing import Any
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout
-from qfluentwidgets import StrongBodyLabel, setFont, SpinBox, SubtitleLabel, DoubleSpinBox, LineEdit, \
-    SwitchButton, ComboBox, MessageBoxBase
+from qfluentwidgets import StrongBodyLabel, setFont, SpinBox, DoubleSpinBox, LineEdit, \
+    SwitchButton, ComboBox
 
-from app.components import SnippetPropertyInputWidget
 from app.data_model import MetaData
 from app.snippets import BaseSnippet
+from ._snippet_property_input_widget import SnippetPropertyInputWidget
 
 
 class SnippetPropertiesWidget(QWidget):
