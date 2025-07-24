@@ -92,6 +92,12 @@ class SnippetPropertiesWidget(QWidget):
                 self._current_snippet.set_property(full_key, model_id_result)
                 self.update_motions(self._widget_map, model_id_result)
 
+            def set_image(image_name: str):
+                image_id_result = [image['id'] for image in self._meta_data.images if
+                                   image['name'] == image_name.split(' #')[0]][0]
+
+                self._current_snippet.set_property(full_key, image_id_result)
+
             if full_key == 'data.motion':
                 sub_widget = ComboBox()
                 current_model_id = self._current_snippet.properties.get('data').get('modelId')
@@ -141,6 +147,19 @@ class SnippetPropertiesWidget(QWidget):
                                model['id'] == _value]
 
                 sub_widget.currentTextChanged.connect(lambda model_name: set_model(model_name))
+
+                if len(result_list) != 0:
+                    sub_widget.setCurrentText(
+                        result_list[0],
+                    )
+
+            elif _key == 'imageId':
+                sub_widget = ComboBox()
+                sub_widget.addItems([f'{model["name"]} #{model["id"]}' for model in self._meta_data.images])
+                result_list = [f'{model["name"]} #{model["id"]}' for model in self._meta_data.images if
+                               model['id'] == _value]
+
+                sub_widget.currentTextChanged.connect(lambda val: set_image(val))
 
                 if len(result_list) != 0:
                     sub_widget.setCurrentText(

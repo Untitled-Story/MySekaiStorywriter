@@ -50,7 +50,7 @@ class FastAPIServer:
 
         if not os.path.exists(cache_map_path):
 
-            os.makedirs(os.path.dirname(cache_map_path))
+            os.makedirs(os.path.dirname(cache_map_path), exist_ok=True)
 
             caches = {}
             with open(cache_map_path, "w", encoding="utf-8") as f:
@@ -123,12 +123,12 @@ class FastAPIServer:
                 if check_resp.status_code == 304:
                     print(f"Cache hit: {md5_url}")
                     return FileResponse(os.path.join("./cache/", f"{etag_original}.cache"))
-                else:
+                elif check_resp.status_code == 200:
                     os.remove(os.path.join("./cache/", f"{etag_original}.cache"))
-
                     gen_cache(md5_url, check_resp)
-
                     return Response(content=check_resp.content, status_code=check_resp.status_code)
+                else:
+                    return Response(content=check_resp.content, status_code=502)
 
         @app.get("/resources/{path:path}")
         async def get_cached_file(path: str, _request: Request):

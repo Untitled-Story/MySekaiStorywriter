@@ -16,7 +16,7 @@ if (Test-Path "main.dist") {
 
 Write-Host "Compiling application with Nuitka..." -ForegroundColor Green
 pyside6-rcc app/resources/resources.qrc -o app/_resources_rc.py
-nuitka --standalone --jobs=10 --windows-console-mode=attach --product-version=$version --file-description="A Scenario Editor for MySekaiStoryteller" --windows-icon-from-ico=app/resources/icons/logo.ico --include-data-dir=resources=resources --enable-plugins=pyside6,tk-inter,matplotlib --lto=yes --show-progress main.py
+nuitka --standalone --jobs=10 --windows-console-mode=attach --product-version=$version --file-description="A Scenario Editor for MySekaiStoryteller" --windows-icon-from-ico=app/resources/icons/logo.ico --include-data-dir=resources=resources --enable-plugins=pyside6,tk-inter --lto=yes --show-progress main.py
 
 if (-not (Test-Path "main.dist\main.exe")) {
     Write-Host "Error: Nuitka compilation failed. main.exe not found." -ForegroundColor Red
@@ -33,7 +33,10 @@ if (-not (Test-Path "dist")) {
 $zipFileName = "dist\MySekaiStorywriter-v$version-win-x64.zip"
 
 Write-Host "Compressing files to $zipFileName..." -ForegroundColor Green
-& zip -r -9 $zipFileName "main.dist"
+
+Push-Location main.dist
+zip -r -9 "..\$zipFileName" .
+Pop-Location
 
 if (Test-Path $zipFileName) {
     $zipSize = (Get-Item $zipFileName).Length / 1MB
