@@ -63,7 +63,7 @@ class SnippetPropertiesWidget(QWidget):
             if current_model:
                 motion_widget.addItems(current_model['motions'])
 
-        if "data.expression" in widgets:
+        if "data.facial" in widgets:
             facial_widget: ComboBox = widgets["data.facial"].subwidget
             facial_widget.clear()
 
