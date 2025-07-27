@@ -2,13 +2,14 @@ import enum
 from typing import Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
 from qfluentwidgets import StrongBodyLabel, setFont, SpinBox, DoubleSpinBox, LineEdit, \
-    SwitchButton, ComboBox
+    SwitchButton, ComboBox, EditableComboBox
 
 from app.data_model import MetaData
 from app.snippets import BaseSnippet
 from ._snippet_property_input_widget import SnippetPropertyInputWidget
+from ..utils import FuzzyCompleter
 
 
 class SnippetPropertiesWidget(QWidget):
@@ -98,13 +99,24 @@ class SnippetPropertiesWidget(QWidget):
 
                 self._current_snippet.set_property(full_key, image_id_result)
 
-            if full_key == 'data.motion':
-                sub_widget = ComboBox()
+            def model_property_standard_combo_box() -> tuple[EditableComboBox, dict]:
+                sub_widget_ = EditableComboBox()
+                sub_widget_.returnPressed.disconnect()
+                sub_widget_.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
                 current_model_id = self._current_snippet.properties.get('data').get('modelId')
-                current_model = next((model for model in self._meta_data.models if model['id'] == current_model_id),
+                current_model_ = next((model for model in self._meta_data.models if model['id'] == current_model_id),
                                      None)
+                return sub_widget_, current_model_
+
+            if full_key == 'data.motion':
+                sub_widget, current_model = model_property_standard_combo_box()
                 if current_model:
                     motions = current_model.get('motions', [])
+
+                    completer = FuzzyCompleter(motions)
+                    completer.setMaxVisibleItems(20)
+                    sub_widget.setCompleter(completer)
+
                     sub_widget.addItems(motions)
 
                     if _value == "":
@@ -120,12 +132,14 @@ class SnippetPropertiesWidget(QWidget):
                 )
 
             elif full_key == 'data.facial':
-                sub_widget = ComboBox()
-                current_model_id = self._current_snippet.properties.get('data').get('modelId')
-                current_model = next((model for model in self._meta_data.models if model['id'] == current_model_id),
-                                     None)
+                sub_widget, current_model = model_property_standard_combo_box()
                 if current_model:
                     expressions = current_model.get('expressions', [])
+
+                    completer = FuzzyCompleter(expressions)
+                    completer.setMaxVisibleItems(20)
+                    sub_widget.setCompleter(completer)
+
                     sub_widget.addItems(expressions)
 
                     if _value == "":
