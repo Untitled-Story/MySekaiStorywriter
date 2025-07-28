@@ -58,18 +58,18 @@ class SnippetPropertiesWidget(QWidget):
     def update_motions(self, widgets: dict[str, Any], model_id: int):
         current_model = next((model for model in self._meta_data.models if model['id'] == model_id), None)
         if "data.motion" in widgets:
-            motion_widget: ComboBox = widgets["data.motion"].subwidget
+            motion_widget: EditableComboBox = widgets["data.motion"].subwidget
             motion_widget.clear()
 
             if current_model:
                 motion_widget.addItems(current_model['motions'])
 
         if "data.facial" in widgets:
-            facial_widget: ComboBox = widgets["data.facial"].subwidget
+            facial_widget: EditableComboBox = widgets["data.facial"].subwidget
             facial_widget.clear()
 
             if current_model:
-                facial_widget.addItems(current_model['expression'])
+                facial_widget.addItems(current_model['expressions'])
 
     def _update_properties(self):
         if self._current_snippet is None:
