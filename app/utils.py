@@ -1,4 +1,5 @@
 import os
+from collections import OrderedDict
 from urllib.parse import urlparse
 
 import httpx
@@ -49,7 +50,7 @@ class FuzzyCompleter(QCompleter):
         self.complete()
 
 
-def build_model_base_json(server_host:str, model_list: list, model_name: str):
+def build_model_base_json(server_host: str, model_list: list, model_name: str):
     model_info: dict = [model for model in model_list if model['modelName'] == model_name][0]
     model_url = f"https://storage.sekai.best/sekai-live2d-assets/live2d/model/{model_info['modelPath']}"
     return f"{server_host}/get/{model_url}/{model_info['modelFile']}"
@@ -80,6 +81,7 @@ def extract_url_path(url):
         new_url += '#' + fragment
 
     return new_url
+
 
 def get_motions(main_path) -> dict:
     result = {
@@ -121,3 +123,10 @@ def get_motions(main_path) -> dict:
         result['common'] = common_motions_data
 
     return result
+
+def to_ordered_dict(obj):
+    if isinstance(obj, dict):
+        return OrderedDict((k, to_ordered_dict(v)) for k, v in obj.items())
+    elif isinstance(obj, list):
+        return [to_ordered_dict(item) for item in obj]
+    return obj

@@ -2,6 +2,8 @@ import copy
 import enum
 from enum import Enum
 
+from app.utils import to_ordered_dict
+
 
 class LayoutModes(Enum):
     Normal = 'Normal'
@@ -84,6 +86,7 @@ class BaseSnippet:
         }
         properties = process_data(self.properties)
         data.update(properties)
+        data = to_ordered_dict(data)
         return data
 
 

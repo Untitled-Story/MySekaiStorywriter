@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import shutil
+from collections import OrderedDict
 
 import httpx
 from PySide6.QtCore import Qt, QThread, Signal
@@ -13,11 +14,11 @@ from qfluentwidgets import CommandBar, setFont, Action, TransparentToolButton, F
 from app.components import SnippetPropertiesWidget, InputMetadataMessageBox, SaveFileMessageBox
 from app.data_model import MetaData
 from app.snippets import SNIPPETS, BaseSnippet, get_snippet, LayoutModes, Sides, MoveSpeed
-from app.utils import extract_url_path, get_motions
+from app.utils import extract_url_path, get_motions, to_ordered_dict
 
 
 class BuildStoryThread(QThread):
-    built = Signal(dict, str)
+    built = Signal(OrderedDict, str)
 
     def __init__(self, file_path: str, metadata: MetaData, title: str, snippets: list[BaseSnippet], parent):
         super().__init__(parent)
@@ -185,16 +186,14 @@ class BuildStoryThread(QThread):
                 "image": f'{file_name_ext}'
             })
 
-
-
         snippets_data = [snippet.build() for snippet in self.snippets]
-        self.built.emit({
-            '$schema': 'https://raw.githubusercontent.com/GuangChen2333/MySekaiStoryteller/refs/heads/master/sekai-story.schema.json',
+        self.built.emit(to_ordered_dict({
+            '$schema': 'https://raw.githubusercontent.com/Untitled-Story/MySekaiStoryteller/refs/heads/master/sekai-story.schema.json',
             'title': self.title,
             'models': models_data,
             'images': images_data,
             'snippets': snippets_data,
-        }, self.file_path)
+        }), self.file_path)
 
 
 class MainView(QFrame):
@@ -403,7 +402,7 @@ class MainView(QFrame):
             build_thread.built.connect(self._on_story_built)
             build_thread.start()
 
-    def _on_story_built(self, data: dict, file_path: str) -> None:
+    def _on_story_built(self, data: OrderedDict, file_path: str) -> None:
         with open(file_path, 'w+', encoding='utf-8') as f:
             data_json = json.dumps(data, indent=2, ensure_ascii=False)
             f.write(data_json)
@@ -461,20 +460,35 @@ class MainView(QFrame):
         for snippet in snippets:
             snippet_type = snippet['type']
             snippet_instance = get_snippet(snippet_type).copy()
-
             properties = snippet.copy()
             del properties['type']
 
+            original_order = list(snippet_instance.properties.keys())
+            new_properties = {}
+
+            for key in original_order:
+                if key in properties:
+                    if isinstance(properties[key], dict) and isinstance(snippet_instance.properties[key], dict):
+                        merged_nested = {**snippet_instance.properties[key], **properties[key]}
+                        new_properties[key] = merged_nested
+                    else:
+                        new_properties[key] = properties[key]
+
+            for key in properties.keys():
+                if key not in original_order:
+                    new_properties[key] = properties[key]
+
             if snippet_instance.type == 'ChangeLayoutMode':
-                properties['data']['mode'] = LayoutModes(properties['data']['mode'])
+                new_properties['data']['mode'] = LayoutModes(new_properties['data']['mode'])
 
-            if "data" in properties:
-                if "from" in properties['data']:
-                    properties['data']['from']['side'] = Sides(properties['data']['from']['side'])
-                if "to" in properties['data']:
-                    properties['data']['to']['side'] = Sides(properties['data']['to']['side'])
-                if "moveSpeed" in properties['data']:
-                    properties['data']['moveSpeed'] = MoveSpeed(properties['data']['moveSpeed'])
+            if "data" in new_properties:
+                data = new_properties['data']
+                if "from" in data:
+                    data['from']['side'] = Sides(data['from']['side'])
+                if "to" in data:
+                    data['to']['side'] = Sides(data['to']['side'])
+                if "moveSpeed" in data:
+                    data['moveSpeed'] = MoveSpeed(data['moveSpeed'])
 
-            snippet_instance.properties = properties
+            snippet_instance.properties = new_properties
             self._add_snippet_instance(snippet_instance)
