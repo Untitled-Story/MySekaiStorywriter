@@ -19,7 +19,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ macos-13, ubuntu-latest, windows-latest, macos-13-xl ]
+#        os: [ macos-13, ubuntu-latest, windows-latest, macos-13-xl ]
+        os: [ windows-latest ]
       max-parallel: 2
     defaults:
       run:
