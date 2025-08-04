@@ -48,13 +48,35 @@ jobs:
           echo "VERSION=$(poetry version -s)" >> $GITHUB_ENV
           echo "Captured version: $VERSION"
 
-      - name: Build Dependencies
+      - name: Build for macOS
+        if: matrix.os == 'macos-13' || matrix.os == 'macos-13-xlarge'
+        uses: Nuitka/Nuitka-Action@main
+        with:
+          script-name: 'main.py'
+          mode: 'app'
+          nuitka-version: 'main'
+          enable-plugins: 'pyside6,tk-inter'
+          windows-console-mode: 'attach'
+          jobs: 10
+          lto: true
+          include-data-dir: "resources=resources"
+          macos-app-icon: "app/resources/icons/logo.ico"
+          file-version: ${{ env.VERSION }}
+
+      - name: Build Windows or Linux
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'
         uses: Nuitka/Nuitka-Action@main
         with:
           script-name: 'main.py'
           mode: 'standalone'
           nuitka-version: 'main'
           enable-plugins: 'pyside6,tk-inter'
+          windows-console-mode: 'attach'
+          jobs: 10
+          lto: true
+          include-data-dir: "resources=resources"
+          windows-icon-from-ico: "app/resources/icons/logo.ico"
+          linux-icon: "app/resources/icons/logo.ico"
           file-version: ${{ env.VERSION }}
 
       - name: Zip files
