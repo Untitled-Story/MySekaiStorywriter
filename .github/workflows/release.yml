@@ -1,0 +1,90 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+    paths:
+      - "app/**/*"
+      - "resources/**/*"
+      - "main.py"
+      - "icon.ico"
+      - "pyproject.toml"
+
+jobs:
+  build:
+    name: Build Executable
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-13, macos-13-xlarge, ubuntu-latest, windows-latest ]
+    defaults:
+      run:
+        shell: bash
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry Action
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: false
+
+      - name: Install Dependencies
+        run: |
+          poetry install --with dev
+
+      - name: Get Version
+        run: |
+          echo "VERSION=$(poetry version -s)" >> $GITHUB_ENV
+          echo "Captured version: $VERSION"
+
+      - name: Build Dependencies
+        uses: Nuitka/Nuitka-Action@main
+        with:
+          script-name: 'main.py'
+          mode: 'standalone'
+          nuitka-version: 'main'
+          enable-plugins: 'pyside6,tk-inter'
+          file-version: ${{ env.VERSION }}
+
+      - name: Zip files
+        run: |
+          7z a -t7z "MySekaiStorywriter-v${{ env.VERSION }}-${{ runner.os }}-${{ runner.arch }}.7z" "./build/*" -mx=9 -m0=lzma2 -md=384m -mfb=273 -ms=on -mmt=on -mf=on -mhe=on
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-build
+          path: |
+            *.7z
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: build-artifacts
+          merge-multiple: true
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          name: MySekaiStorywriter v${{ env.VERSION }}
+          tag_name: v${{ env.VERSION }}
+          files: build-artifacts/*
