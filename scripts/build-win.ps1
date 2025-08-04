@@ -1,11 +1,4 @@
-$version = Read-Host "Enter version number (format: x.x.x)"
-
-. ".venv\Scripts\activate.ps1"
-
-if ($version -notmatch '^\d+\.\d+\.\d+$') {
-    Write-Host "Error: Invalid version format. Please use x.x.x format." -ForegroundColor Red
-    exit 1
-}
+$version = $(poetry version -s)
 
 Write-Host "Starting packaging process for MySekaiStorywriter version $version..." -ForegroundColor Cyan
 
