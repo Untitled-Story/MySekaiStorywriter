@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ macos-13, macos-13-xlarge, ubuntu-latest, windows-latest ]
+        os: [ macos-13, ubuntu-latest, windows-latest, macos-13-xl ]
       max-parallel: 2
     defaults:
       run:
@@ -58,7 +58,7 @@ jobs:
           enable-plugins: 'pyside6,tk-inter'
           windows-console-mode: 'attach'
           jobs: 10
-          lto: true
+          lto: 'yes'
           include-data-dir: "resources=resources"
           macos-app-icon: "app/resources/icons/logo.ico"
           file-version: ${{ env.VERSION }}
@@ -73,7 +73,7 @@ jobs:
           enable-plugins: 'pyside6,tk-inter'
           windows-console-mode: 'attach'
           jobs: 10
-          lto: true
+          lto: 'yes'
           include-data-dir: "resources=resources"
           windows-icon-from-ico: "app/resources/icons/logo.ico"
           linux-icon: "app/resources/icons/logo.ico"
