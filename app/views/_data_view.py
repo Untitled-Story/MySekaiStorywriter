@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from PySide6.QtCore import Signal, QThread
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSizePolicy, QStackedWidget, QFileDialog, \
@@ -135,7 +136,7 @@ class ModelManageFrame(QFrame):
         if not file_path:
             return
 
-        filename = os.path.basename(file_path).split('.')[0]
+        filename = Path(file_path).stem
         if filename in [model['model_name'] for model in self.meta_data.models]:
             Flyout.create(
                 icon=InfoBarIcon.INFORMATION,

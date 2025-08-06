@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 from collections import OrderedDict
+from pathlib import Path
 
 import httpx
 from PySide6.QtCore import Qt, QThread, Signal
@@ -62,7 +63,7 @@ class BuildStoryThread(QThread):
     async def download_motion_and_save(client: httpx.AsyncClient, url: str, motion_path: str, main_data: dict):
         r = await client.get(url)
         m_file_name_ext = os.path.basename(r.url.path)
-        m_file_name = m_file_name_ext.split('.')[0]
+        m_file_name = Path(m_file_name_ext).stem
         file_path = os.path.join(motion_path, m_file_name_ext)
         main_data["FileReferences"]["Motions"][m_file_name] = [{
             "FadeInTime": 0.5,
@@ -433,7 +434,7 @@ class MainView(QFrame):
         self.meta_data.reset_all()
 
         for model in models_def:
-            model_name = model['model'].split('/')[-1].split('.')[0]
+            model_name = Path(model['model'].split('/')[-1]).stem
             self.meta_data.add_model(
                 model_name,
                 os.path.join(
@@ -446,7 +447,7 @@ class MainView(QFrame):
             )
 
         for image in images_def:
-            image_name = image['image'].split('/')[-1].split('.')[0]
+            image_name = Path(image['image'].split('/')[-1]).stem
             self.meta_data.add_image(
                 image_name,
                 os.path.join(
