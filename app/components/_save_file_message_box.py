@@ -7,14 +7,6 @@ class SaveFileMessageBox(MessageBoxBase):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.buttonLayout.removeWidget(self.cancelButton)
-        self.cancelButton.hide()
-        self.cancelButton.clicked.disconnect()
-        self.cancelButton.setParent(None)
-        self.cancelButton.deleteLater()
-        self.buttonLayout.update()
-        self.update()
-
         title_label = SubtitleLabel(text='Saving your story...')
 
         progress_ring_layout = QHBoxLayout()

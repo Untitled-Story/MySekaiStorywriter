@@ -104,7 +104,7 @@ def get_motions(main_path) -> dict:
     result['special_url'] = special_motions_url
     result['common_url'] = common_motions_url
 
-    retry = Retry(total=5, backoff_factor=0.5)
+    retry = Retry(total=10, backoff_factor=0.5)
     with httpx.Client(transport=RetryTransport(retry=retry)) as client:
         model_motion_result = client.get(model_motion_url)
         special_motions_result = client.get(special_motions_url)

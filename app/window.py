@@ -74,7 +74,7 @@ class Window(FluentWindow):
 
     @asyncSlot(str)
     async def initialize_data(self):
-        retry = Retry(total=3, backoff_factor=0.5)
+        retry = Retry(total=10, backoff_factor=0.5)
         async with httpx.AsyncClient(transport=RetryTransport(retry=retry)) as client:
             print(self.server_host)
             response = await client.get(

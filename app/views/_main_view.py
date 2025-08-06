@@ -29,8 +29,24 @@ class BuildStoryThread(QThread):
         self.metadata = metadata
         self.models = metadata.models
         self.base_path = os.path.dirname(self.file_path)
-        self.retry = Retry(total=5, backoff_factor=0.5)
+        self.retry = Retry(total=10, backoff_factor=0.5)
         self.client = httpx.Client(transport=RetryTransport(retry=self.retry))
+
+    def cancel(self):
+        self.terminate()
+        print('Canceled')
+        for model in [model for model in self.models if model['downloaded'] == False]:
+            model_path = os.path.join(
+                self.base_path,
+                'models',
+                model['model_name'],
+            )
+
+            if not os.path.exists(model_path):
+                continue
+
+            print(f'Remove downloaded: {model_path}')
+            shutil.rmtree(model_path)
 
     def download(self, path: str, filename: str, url: str) -> bytes:
         full_path = os.path.join(path, filename)
@@ -391,7 +407,6 @@ class MainView(QFrame):
                 return
 
             self.save_message_box = SaveFileMessageBox(self)
-            self.save_message_box.show()
 
             build_thread = BuildStoryThread(
                 file_path,
@@ -400,6 +415,10 @@ class MainView(QFrame):
                 self.current_snippets,
                 self
             )
+
+            self.save_message_box.cancelButton.clicked.connect(build_thread.cancel)
+            self.save_message_box.show()
+
             build_thread.built.connect(self._on_story_built)
             build_thread.start()
 
