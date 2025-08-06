@@ -2,22 +2,19 @@ $version = $(poetry version -s)
 
 Write-Host "Starting packaging process for MySekaiStorywriter version $version..." -ForegroundColor Cyan
 
-if (Test-Path "main.dist") {
-    Write-Host "Deleting existing main.dist folder..." -ForegroundColor Yellow
-    Remove-Item -Path "main.dist" -Recurse -Force
+if (Test-Path "MySekaiStorywriter.dist") {
+    Write-Host "Deleting existing MySekaiStorywriter.dist folder..." -ForegroundColor Yellow
+    Remove-Item -Path "MySekaiStorywriter.dist" -Recurse -Force
 }
 
 Write-Host "Compiling application with Nuitka..." -ForegroundColor Green
-pyside6-rcc app/resources/resources.qrc -o app/_resources_rc.py
-nuitka --standalone --jobs=10 --windows-console-mode=attach --product-version=$version --file-description="A Scenario Editor for MySekaiStoryteller" --windows-icon-from-ico=app/resources/icons/logo.ico --include-data-dir=resources=resources --enable-plugins=pyside6,tk-inter --lto=yes --show-progress main.py
+poetry run pyside6-rcc app/resources/resources.qrc -o app/_resources_rc.py
+poetry run nuitka --standalone --jobs=10 --windows-console-mode=attach --product-version=$version --file-description="A Scenario Editor for MySekaiStoryteller" --windows-icon-from-ico=app/resources/icons/logo.ico --include-data-dir=resources=resources --enable-plugins=pyside6,tk-inter --lto=yes --show-progress MySekaiStorywriter.py
 
-if (-not (Test-Path "main.dist\main.exe")) {
-    Write-Host "Error: Nuitka compilation failed. main.exe not found." -ForegroundColor Red
+if (-not (Test-Path "MySekaiStorywriter.dist\MySekaiStorywriter.exe")) {
+    Write-Host "Error: Nuitka compilation failed. MySekaiStorywriter.exe not found." -ForegroundColor Red
     exit 1
 }
-
-Write-Host "Renaming executable file..." -ForegroundColor Yellow
-Rename-Item -Path "main.dist\main.exe" -NewName "MySekaiStorywriter.exe"
 
 if (-not (Test-Path "dist")) {
     New-Item -ItemType Directory -Path "dist" | Out-Null

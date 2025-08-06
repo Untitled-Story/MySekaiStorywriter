@@ -86,7 +86,7 @@ jobs:
 
       - name: Zip files
         run: |
-          7z a -t7z "MySekaiStorywriter-v${{ env.VERSION }}-${{ runner.os }}-${{ runner.arch }}.7z" "./build/main.dist/*" -mx=7 -m0=lzma2 -mmt=on 
+          7z a -t7z "MySekaiStorywriter-v${{ env.VERSION }}-${{ runner.os }}-${{ runner.arch }}.7z" "./build/MySekaiStorywriter.dist/*" -mx=7 -m0=lzma2 -mmt=on 
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
