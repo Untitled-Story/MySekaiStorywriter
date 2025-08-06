@@ -115,7 +115,7 @@ class FastAPIServer:
                 try:
                     check_resp = await client.get(parsed_url, headers={
                         "If-None-Match": f'\"{etag_decoded}\"'
-                    }, timeout=5)
+                    }, timeout=3)
                 except httpx.HTTPError:
                     print(f"Error, use cache: {md5_url}")
                     return FileResponse(os.path.join("./cache/", f"{etag_original}.cache"))
