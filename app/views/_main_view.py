@@ -434,7 +434,15 @@ class MainView(QFrame):
         self.meta_data.reset_all()
 
         for model in models_def:
-            model_name = Path(model['model'].split('/')[-1]).stem
+            file_name_with_ext = model['model'].split('/')[-1]
+
+            if '.model3.json' in file_name_with_ext:
+                model_name = file_name_with_ext.split('.model3.json')[0]
+            elif '.model.json' in file_name_with_ext:
+                model_name = file_name_with_ext.split('.model.json')[0]
+            else:
+                raise RuntimeError(f"What is the model name: {file_name_with_ext}")
+
             self.meta_data.add_model(
                 model_name,
                 os.path.join(
