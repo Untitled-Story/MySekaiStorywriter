@@ -7,7 +7,7 @@ on:
     paths:
       - "app/**/*"
       - "resources/**/*"
-      - "main.py"
+      - "MySekaiStorywriter.py"
       - "icon.ico"
       - "pyproject.toml"
 
@@ -57,7 +57,7 @@ jobs:
         if: matrix.os == 'macos-13' || matrix.os == 'macos-13-xlarge'
         uses: Nuitka/Nuitka-Action@main
         with:
-          script-name: 'main.py'
+          script-name: 'MySekaiStorywriter.py'
           mode: 'app'
           nuitka-version: 'main'
           enable-plugins: 'pyside6,tk-inter'
@@ -72,7 +72,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'
         uses: Nuitka/Nuitka-Action@main
         with:
-          script-name: 'main.py'
+          script-name: 'MySekaiStorywriter.py'
           mode: 'standalone'
           nuitka-version: 'main'
           enable-plugins: 'pyside6,tk-inter'

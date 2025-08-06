@@ -169,7 +169,7 @@ class BuildStoryThread(QThread):
                     print(f"{model_path} already exists, skipping.")
                     continue
 
-                shutil.copytree(os.path.dirname(model['path']), model_dir)
+                shutil.copytree(os.path.dirname(model['path']), model_dir, dirs_exist_ok=True)
 
         images_data = []
         image_dir = os.path.join(self.base_path, 'images')
