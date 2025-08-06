@@ -10,7 +10,6 @@ on:
       - "MySekaiStorywriter.py"
       - "icon.ico"
       - "pyproject.toml"
-
   workflow_dispatch:
 
 jobs:
@@ -26,7 +25,7 @@ jobs:
       run:
         shell: bash
     outputs:
-      version: ${{ steps.set-version.outputs.VERSION }}
+      version: ${{ steps.set-version.outputs.version }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -51,7 +50,9 @@ jobs:
       - name: Get Version
         id: set-version
         run: |
-          echo "VERSION=$(poetry version -s)" >> $GITHUB_ENV
+          VERSION=$(poetry version -s)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build for macOS
         if: matrix.os == 'macos-13' || matrix.os == 'macos-13-xlarge'

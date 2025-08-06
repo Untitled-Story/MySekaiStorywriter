@@ -73,7 +73,7 @@ class FastAPIServer:
             allow_headers=["*"],
         )
 
-        client = httpx.AsyncClient()
+        client = httpx.AsyncClient(verify=False)
 
         def gen_cache(md5_url: str, resp: httpx.Response):
             etag = resp.headers["etag"]
