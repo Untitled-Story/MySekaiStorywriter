@@ -345,24 +345,22 @@ class MainView(QFrame):
 
     def swap_items(self, index1: int, index2: int) -> None:
         count = self._list_widget.count()
-        if 0 <= index1 < count and 0 <= index2 < count and index1 != index2:
-            if index1 < index2:
-                item2 = self._list_widget.takeItem(index2)
-                item1 = self._list_widget.takeItem(index1)
-            else:
-                item1 = self._list_widget.takeItem(index1)
-                item2 = self._list_widget.takeItem(index2)
+        if not (0 <= index1 < count and 0 <= index2 < count) or index1 == index2:
+            return
 
-            item1_name, item1_num = item1.text().split(' #')
-            item2_name, item2_num = item2.text().split(' #')
-            item1.setText(f'{item1_name} #{item2_num}')
-            item2.setText(f'{item2_name} #{item1_num}')
+        min_index = min(index1, index2)
+        max_index = max(index1, index2)
 
-            self._list_widget.insertItem(index1, item2)
-            self._list_widget.insertItem(index2, item1)
+        item_max = self._list_widget.takeItem(max_index)
+        item_min = self._list_widget.takeItem(min_index)
 
-            self.current_snippets[index1], self.current_snippets[index2] = \
-                self.current_snippets[index2], self.current_snippets[index1]
+        self._list_widget.insertItem(min_index, item_max)
+        self._list_widget.insertItem(max_index, item_min)
+
+        self.current_snippets[min_index], self.current_snippets[max_index] = \
+            self.current_snippets[max_index], self.current_snippets[min_index]
+
+        self._renumber_snippets()
 
     def _on_up_clicked(self) -> None:
         current_row = self._list_widget.currentRow()
