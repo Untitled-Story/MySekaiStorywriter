@@ -10,7 +10,6 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
-from httpx_retries import Retry
 
 
 def calculate_md5_string(text: str) -> str:

@@ -79,7 +79,7 @@ class BuildStoryThread(QThread):
     async def download_motion_and_save(client: httpx.AsyncClient, url: str, motion_path: str, main_data: dict):
         r = await client.get(url)
         m_file_name_ext = os.path.basename(r.url.path)
-        m_file_name = Path(m_file_name_ext).stem
+        m_file_name = m_file_name_ext.split('.motion3.json')[0]
         file_path = os.path.join(motion_path, m_file_name_ext)
         main_data["FileReferences"]["Motions"][m_file_name] = [{
             "FadeInTime": 0.5,
