@@ -136,12 +136,19 @@ class ModelManageFrame(QFrame):
         if not file_path:
             return
 
-        filename = Path(file_path).stem
-        if filename in [model['model_name'] for model in self.meta_data.models]:
+        file_name_with_ext = Path(file_path).name
+        if '.model3.json' in file_name_with_ext:
+            model_name = file_name_with_ext.split('.model3.json')[0]
+        elif '.model.json' in file_name_with_ext:
+            model_name = file_name_with_ext.split('.model.json')[0]
+        else:
+            raise RuntimeError(f"What is the model name: {file_name_with_ext}")
+
+        if model_name in [model['model_name'] for model in self.meta_data.models]:
             Flyout.create(
                 icon=InfoBarIcon.INFORMATION,
                 title='Info',
-                content=f"The model {filename} is already existed in models.",
+                content=f"The model {model_name} is already existed in models.",
                 target=self.add_local_button,
                 parent=self,
                 isClosable=True,
@@ -150,8 +157,8 @@ class ModelManageFrame(QFrame):
 
             return
 
-        data = self.meta_data.add_model(filename, file_path, True)
-        self.model_list_widget.addItem(f'{filename} #{data["id"]}')
+        data = self.meta_data.add_model(model_name, file_path, True)
+        self.model_list_widget.addItem(f'{model_name} #{data["id"]}')
         self.model_list_widget.setCurrentIndex(len(self.meta_data.models) - 1)
 
     def renumber_models(self):

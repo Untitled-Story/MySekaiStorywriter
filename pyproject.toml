@@ -1,6 +1,6 @@
 [project]
 name = "MySekaiStorywriter"
-version = "0.1.11"
+version = "0.1.12"
 description = ""
 authors = [
     { name = "Guang_Chen", email = "guangchen23333@gmail.com" }
