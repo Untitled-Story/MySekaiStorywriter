@@ -28,7 +28,7 @@ class BaseSnippet:
         self._type = snippet_type
         self.properties: dict = {
             'wait': True,
-            'delay': 0
+            'delay': float(0)
         }
         if properties:
             self.properties['data'] = properties
@@ -87,7 +87,7 @@ class BaseSnippet:
         properties = process_data(self.properties)
         data.update(properties)
         data = to_ordered_dict(data)
-        return data
+        return data.copy()
 
 
 class ChangeBackgroundImageSnippet(BaseSnippet):
@@ -193,12 +193,14 @@ class MoveSnippet(BaseSnippet):
 
 
 class TalkSnippet(BaseSnippet):
-    def __init__(self, speaker: str, content: str):
+    def __init__(self, speaker: str, content: str, model_id: int, voice: str):
         super().__init__(
             'Talk',
             {
                 'speaker': speaker,
-                'content': content
+                'content': content,
+                'modelId': model_id,
+                'voice': voice
             }
         )
 
@@ -237,11 +239,11 @@ SNIPPETS = [
     ChangeBackgroundImageSnippet(0),
     ChangeLayoutModeSnippet(LayoutModes.Normal),
     HideTalkSnippet(),
-    LayoutAppearSnippet(0, Sides.Center, 0.0, Sides.Center, 0.0, '', '', MoveSpeed.Normal),
-    LayoutClearSnippet(0, Sides.Center, 0.0, Sides.Center, 0.0, MoveSpeed.Normal),
-    MotionSnippet(0, '', ''),
-    MoveSnippet(0, Sides.Center, 0.0, Sides.Center, 0.0, MoveSpeed.Normal),
-    TalkSnippet('', ''),
+    LayoutAppearSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, '', '', MoveSpeed.Normal),
+    LayoutClearSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, MoveSpeed.Normal),
+    MotionSnippet(-1, '', ''),
+    MoveSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, MoveSpeed.Normal),
+    TalkSnippet('', '', -1, ''),
     TelopSnippet(''),
     BlackInSnippet(500),
     BlackOutSnippet(500),

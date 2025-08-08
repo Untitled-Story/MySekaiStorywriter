@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import shutil
+import uuid
 from collections import OrderedDict
 from pathlib import Path
 
@@ -171,8 +172,8 @@ class BuildStoryThread(QThread):
                 os.makedirs(motion_path, exist_ok=True)
 
                 main_data["FileReferences"]["Motions"] = {}
-                for i in range(0, len(urls), 40):
-                    chunk = urls[i:i + 40]
+                for i in range(0, len(urls), 50):
+                    chunk = urls[i:i + 50]
                     asyncio.run(
                         self.download_motions(chunk, motion_path, main_data)
                     )
@@ -203,7 +204,28 @@ class BuildStoryThread(QThread):
                 "image": f'{file_name_ext}'
             })
 
-        snippets_data = [snippet.build() for snippet in self.snippets]
+        os.makedirs(os.path.join(self.base_path, 'voices'), exist_ok=True)
+
+        snippets_data = []
+        for snippet in self.snippets:
+            data = snippet.build()
+            if 'voice' in data['data'] and data['data']['voice']:
+                voice_path = Path(data['data']['voice'])
+
+                if voice_path.parent == Path(os.path.abspath(os.path.join(self.base_path, 'voices/'))):
+                    print(f'{voice_path} already exists, skipping.')
+                    data['data']['voice'] = voice_path.name
+                else:
+                    new_voice_name = f'{str(uuid.uuid4().hex)}{voice_path.suffix}'
+                    new_voice_path = os.path.abspath(
+                        os.path.join(self.base_path, 'voices', new_voice_name)
+                    )
+                    shutil.copy(voice_path, new_voice_path)
+                    data['data']['voice'] = new_voice_name
+                    snippet.set_property('data.voice', new_voice_path)
+
+            snippets_data.append(data)
+
         self.built.emit(to_ordered_dict({
             '$schema': 'https://raw.githubusercontent.com/Untitled-Story/MySekaiStoryteller/refs/heads/master/sekai-story.schema.json',
             'title': self.title,
@@ -424,6 +446,9 @@ class MainView(QFrame):
         with open(file_path, 'w+', encoding='utf-8') as f:
             data_json = json.dumps(data, indent=2, ensure_ascii=False)
             f.write(data_json)
+        self._property_widget.reset()
+        current_index = self._list_widget.currentRow()
+        self._property_widget.set_snippet(self.current_snippets[current_index], self.meta_data)
         self.save_message_box.close()
 
     def _on_load_clicked(self) -> None:
@@ -515,6 +540,13 @@ class MainView(QFrame):
                     data['to']['side'] = Sides(data['to']['side'])
                 if "moveSpeed" in data:
                     data['moveSpeed'] = MoveSpeed(data['moveSpeed'])
+                if 'voice' in data:
+                    if data['voice']:
+                        data['voice'] = os.path.abspath(os.path.join(
+                            base_path,
+                            "voices",
+                            data['voice']
+                        )).replace("\\", "/")
 
             snippet_instance.properties = new_properties
             self._add_snippet_instance(snippet_instance)

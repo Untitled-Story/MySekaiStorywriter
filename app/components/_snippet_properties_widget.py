@@ -8,6 +8,7 @@ from qfluentwidgets import StrongBodyLabel, setFont, SpinBox, DoubleSpinBox, Lin
 
 from app.data_model import MetaData
 from app.snippets import BaseSnippet
+from ._voice_property import VoiceProperty
 from ._snippet_property_input_widget import SnippetPropertyInputWidget
 from ..utils import FuzzyCompleter
 
@@ -20,6 +21,7 @@ class SnippetPropertiesWidget(QWidget):
         self.setLayout(self._layout)
 
         self.clear_properties()
+        self._current_snippet = None
         self._current_snippet = None
         self._current_data = {}
 
@@ -56,7 +58,10 @@ class SnippetPropertiesWidget(QWidget):
         self._update_properties()
 
     def update_motions(self, widgets: dict[str, Any], model_id: int):
-        current_model = next((model for model in self._meta_data.models if model['id'] == model_id), None)
+        current_model = None
+        if model_id != -1:
+            current_model = next((model for model in self._meta_data.models if model['id'] == model_id), None)
+
         if "data.motion" in widgets:
             motion_widget: EditableComboBox = widgets["data.motion"].subwidget
             motion_widget.clear()
@@ -88,10 +93,14 @@ class SnippetPropertiesWidget(QWidget):
             full_key = f"{parent_key}.{_key}" if parent_key else _key
 
             def set_model(model_name: str):
-                model_id_result = [model['id'] for model in self._meta_data.models if
-                                   model['model_name'] == model_name.split(' #')[0]][0]
-                self._current_snippet.set_property(full_key, model_id_result)
-                self.update_motions(self._widget_map, model_id_result)
+                if model_name != 'None':
+                    model_id_result = [model['id'] for model in self._meta_data.models if
+                                       model['model_name'] == model_name.split(' #')[0]][0]
+                    self._current_snippet.set_property(full_key, model_id_result)
+                    self.update_motions(self._widget_map, model_id_result)
+                else:
+                    self._current_snippet.set_property(full_key, -1)
+                    self.update_motions(self._widget_map, -1)
 
             def set_image(image_name: str):
                 image_id_result = [image['id'] for image in self._meta_data.images if
@@ -105,7 +114,7 @@ class SnippetPropertiesWidget(QWidget):
                 sub_widget_.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
                 current_model_id = self._current_snippet.properties.get('data').get('modelId')
                 current_model_ = next((model for model in self._meta_data.models if model['id'] == current_model_id),
-                                     None)
+                                      None)
                 return sub_widget_, current_model_
 
             if full_key == 'data.motion':
@@ -156,16 +165,20 @@ class SnippetPropertiesWidget(QWidget):
 
             elif _key == 'modelId':
                 sub_widget = ComboBox()
+                sub_widget.addItem('None')
                 sub_widget.addItems([f'{model["model_name"]} #{model["id"]}' for model in self._meta_data.models])
                 result_list = [f'{model["model_name"]} #{model["id"]}' for model in self._meta_data.models if
                                model['id'] == _value]
-
-                sub_widget.currentTextChanged.connect(lambda model_name: set_model(model_name))
 
                 if len(result_list) != 0:
                     sub_widget.setCurrentText(
                         result_list[0],
                     )
+                else:
+                    sub_widget.setCurrentText('None')
+
+                sub_widget.currentTextChanged.connect(lambda model_name: set_model(model_name))
+
 
             elif _key == 'imageId':
                 sub_widget = ComboBox()
@@ -180,6 +193,11 @@ class SnippetPropertiesWidget(QWidget):
                         result_list[0],
                     )
 
+            elif _key == 'voice':
+                sub_widget = VoiceProperty()
+                sub_widget.val = _value
+                sub_widget.text_changed.connect(lambda text: self._current_snippet.set_property(full_key, text))
+
             elif isinstance(_value, bool):
                 sub_widget = SwitchButton()
                 sub_widget.setChecked(_value)
@@ -187,21 +205,16 @@ class SnippetPropertiesWidget(QWidget):
             elif isinstance(_value, int):
                 sub_widget = SpinBox()
                 sub_widget.setSingleStep(1)
-                sub_widget.setFixedHeight(26)
-                sub_widget.setRange(-10000, 10000)
                 sub_widget.setValue(_value)
                 sub_widget.valueChanged.connect(lambda val: self._current_snippet.set_property(full_key, val))
             elif isinstance(_value, float):
                 sub_widget = DoubleSpinBox()
                 sub_widget.setSingleStep(0.01)
-                sub_widget.setFixedHeight(26)
                 sub_widget.setDecimals(2)
-                sub_widget.setRange(-10000, 10000)
                 sub_widget.setValue(_value)
                 sub_widget.valueChanged.connect(lambda val: self._current_snippet.set_property(full_key, val))
             elif isinstance(_value, str):
                 sub_widget = LineEdit()
-                sub_widget.setFixedHeight(26)
                 sub_widget.setText(_value)
                 sub_widget.textChanged.connect(lambda text: self._current_snippet.set_property(full_key, text))
             elif isinstance(_value, dict):

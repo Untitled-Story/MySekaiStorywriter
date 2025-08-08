@@ -6,3 +6,4 @@ from ._my_splash_screen import MySplashScreen
 from ._save_file_message_box import SaveFileMessageBox
 from ._snippet_properties_widget import SnippetPropertiesWidget
 from ._snippet_property_input_widget import SnippetPropertyInputWidget
+from ._voice_property import VoiceProperty
