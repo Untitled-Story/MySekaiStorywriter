@@ -209,20 +209,21 @@ class BuildStoryThread(QThread):
         snippets_data = []
         for snippet in self.snippets:
             data = snippet.build()
-            if 'voice' in data['data'] and data['data']['voice']:
-                voice_path = Path(data['data']['voice'])
+            if 'data' in data:
+                if 'voice' in data['data'] and data['data']['voice']:
+                    voice_path = Path(data['data']['voice'])
 
-                if voice_path.parent == Path(os.path.abspath(os.path.join(self.base_path, 'voices/'))):
-                    print(f'{voice_path} already exists, skipping.')
-                    data['data']['voice'] = voice_path.name
-                else:
-                    new_voice_name = f'{str(uuid.uuid4().hex)}{voice_path.suffix}'
-                    new_voice_path = os.path.abspath(
-                        os.path.join(self.base_path, 'voices', new_voice_name)
-                    )
-                    shutil.copy(voice_path, new_voice_path)
-                    data['data']['voice'] = new_voice_name
-                    snippet.set_property('data.voice', new_voice_path)
+                    if voice_path.parent == Path(os.path.abspath(os.path.join(self.base_path, 'voices/'))):
+                        print(f'{voice_path} already exists, skipping.')
+                        data['data']['voice'] = voice_path.name
+                    else:
+                        new_voice_name = f'{str(uuid.uuid4().hex)}{voice_path.suffix}'
+                        new_voice_path = os.path.abspath(
+                            os.path.join(self.base_path, 'voices', new_voice_name)
+                        )
+                        shutil.copy(voice_path, new_voice_path)
+                        data['data']['voice'] = new_voice_name
+                        snippet.set_property('data.voice', new_voice_path)
 
             snippets_data.append(data)
 
