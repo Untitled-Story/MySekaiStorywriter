@@ -205,12 +205,14 @@ class SnippetPropertiesWidget(QWidget):
             elif isinstance(_value, int):
                 sub_widget = SpinBox()
                 sub_widget.setSingleStep(1)
+                sub_widget.setRange(-32767, 32767)
                 sub_widget.setValue(_value)
                 sub_widget.valueChanged.connect(lambda val: self._current_snippet.set_property(full_key, val))
             elif isinstance(_value, float):
                 sub_widget = DoubleSpinBox()
-                sub_widget.setSingleStep(0.01)
-                sub_widget.setDecimals(2)
+                sub_widget.setSingleStep(0.1)
+                sub_widget.setDecimals(1)
+                sub_widget.setRange(-32767, 32767)
                 sub_widget.setValue(_value)
                 sub_widget.valueChanged.connect(lambda val: self._current_snippet.set_property(full_key, val))
             elif isinstance(_value, str):
