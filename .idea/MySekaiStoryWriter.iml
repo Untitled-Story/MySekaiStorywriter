@@ -9,6 +9,7 @@
       <excludeFolder url="file://$MODULE_DIR$/dist" />
       <excludeFolder url="file://$MODULE_DIR$/MySekaiStorywriter.build" />
       <excludeFolder url="file://$MODULE_DIR$/MySekaiStorywriter.dist" />
+      <excludeFolder url="file://$MODULE_DIR$/cache" />
     </content>
     <orderEntry type="jdk" jdkName="Poetry (MySekaiStorywriter)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
