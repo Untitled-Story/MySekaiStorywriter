@@ -120,7 +120,7 @@ class HideTalkSnippet(BaseSnippet):
 
 class LayoutAppearSnippet(BaseSnippet):
     def __init__(self, model_id: int, from_side: Sides, from_offset: float, to_side: Sides, to_offset: float,
-                 motion: str, facial: str, move_speed: MoveSpeed):
+                 motion: str, facial: str, move_speed: MoveSpeed, hologram: bool):
         super().__init__(
             'LayoutAppear',
             {
@@ -135,7 +135,8 @@ class LayoutAppearSnippet(BaseSnippet):
                 },
                 'motion': motion,
                 'facial': facial,
-                'moveSpeed': move_speed
+                'moveSpeed': move_speed,
+                'hologram': hologram
             }
         )
 
@@ -239,7 +240,7 @@ SNIPPETS = [
     ChangeBackgroundImageSnippet(0),
     ChangeLayoutModeSnippet(LayoutModes.Normal),
     HideTalkSnippet(),
-    LayoutAppearSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, '', '', MoveSpeed.Normal),
+    LayoutAppearSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, '', '', MoveSpeed.Normal, False),
     LayoutClearSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, MoveSpeed.Normal),
     MotionSnippet(-1, '', ''),
     MoveSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, MoveSpeed.Normal),
