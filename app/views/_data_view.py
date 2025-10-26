@@ -293,7 +293,6 @@ class ModelManageFrame(QFrame):
         self.small_scale_edit.blockSignals(True)
         self.anchor_edit.blockSignals(True)
 
-        print(len(self.meta_data.models))
         if 0 <= index < len(self.meta_data.models):
             model = self.meta_data.models[index]
 

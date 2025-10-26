@@ -13,7 +13,7 @@ from httpx_retries import RetryTransport, Retry
 from qfluentwidgets import CommandBar, setFont, Action, TransparentToolButton, FluentIcon, HorizontalSeparator, \
     ListWidget
 
-from app.components import SnippetPropertiesWidget, InputMetadataMessageBox, SaveFileMessageBox
+from app.components import SnippetPropertiesWidget, SaveFileMessageBox
 from app.data_model import MetaData
 from app.snippets import SNIPPETS, BaseSnippet, get_snippet, LayoutModes, Sides, MoveSpeed
 from app.utils import extract_url_path, get_motions, to_ordered_dict
@@ -22,10 +22,9 @@ from app.utils import extract_url_path, get_motions, to_ordered_dict
 class BuildStoryThread(QThread):
     built = Signal(OrderedDict, str)
 
-    def __init__(self, file_path: str, metadata: MetaData, title: str, snippets: list[BaseSnippet], parent):
+    def __init__(self, file_path: str, metadata: MetaData, snippets: list[BaseSnippet], parent):
         super().__init__(parent)
         self.snippets = snippets
-        self.title = title
         self.file_path = file_path
         self.metadata = metadata
         self.models = metadata.models
@@ -232,7 +231,6 @@ class BuildStoryThread(QThread):
 
         self.built.emit(to_ordered_dict({
             '$schema': 'https://raw.githubusercontent.com/Untitled-Story/MySekaiStoryteller/refs/heads/master/sekai-story.schema.json',
-            'title': self.title,
             'models': models_data,
             'images': images_data,
             'snippets': snippets_data,
@@ -418,33 +416,31 @@ class MainView(QFrame):
                 self._property_widget.clear_properties()
 
     def _on_save_clicked(self) -> None:
-        metadata_message_box = InputMetadataMessageBox(self)
-        if metadata_message_box.exec():
-            file_path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Save your story",
-                "",
-                "Sekai Story File (*.sekai-story.json)"
-            )
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save your story",
+            "",
+            "Sekai Story File (*.sekai-story.json)"
+        )
 
-            if file_path is None or file_path == '':
-                return
+        if file_path is None or file_path == '':
+            return
 
-            self.save_message_box = SaveFileMessageBox(self)
+        self.save_message_box = SaveFileMessageBox(self)
 
-            build_thread = BuildStoryThread(
-                file_path,
-                self.meta_data,
-                metadata_message_box.title_edit.text(),
-                self.current_snippets,
-                self
-            )
+        build_thread = BuildStoryThread(
+            file_path,
+            self.meta_data,
+            self.current_snippets,
+            self
+        )
 
-            self.save_message_box.cancelButton.clicked.connect(build_thread.cancel)
-            self.save_message_box.show()
+        self.save_message_box.cancelButton.clicked.connect(build_thread.cancel)
+        self.save_message_box.show()
 
-            build_thread.built.connect(self._on_story_built)
-            build_thread.start()
+        build_thread.built.connect(self._on_story_built)
+        build_thread.start()
+
 
     def _on_story_built(self, data: OrderedDict, file_path: str) -> None:
         with open(file_path, 'w+', encoding='utf-8') as f:
