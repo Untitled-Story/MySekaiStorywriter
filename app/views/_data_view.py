@@ -3,11 +3,11 @@ from pathlib import Path
 
 from PySide6.QtCore import Signal, QThread
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSizePolicy, QStackedWidget, QFileDialog, \
-    QListWidgetItem
+    QListWidgetItem, QGridLayout
 from qfluentwidgets import Pivot, \
     HorizontalSeparator, VerticalSeparator, SubtitleLabel, EditableComboBox, PushButton, PrimaryPushButton, \
     Flyout, InfoBarIcon, FlyoutAnimationType, ComboBox, FluentIcon, TeachingTip, \
-    TeachingTipTailPosition, ListWidget
+    TeachingTipTailPosition, ListWidget, CaptionLabel, LineEdit, SpinBox, DoubleSpinBox
 
 from app.components import Live2DWidget, DownloadingFlyout, ImageDisplayWidget
 from app.data_model import MetaData
@@ -86,6 +86,7 @@ class ModelManageFrame(QFrame):
         l_v_layout.addWidget(SubtitleLabel(text='Your Models'))
 
         self.model_list_widget = ComboBox()
+        self.model_list_widget.currentIndexChanged.connect(lambda index: self.on_model_selection_changed(index))
         l_v_layout.addWidget(self.model_list_widget)
 
         buttons_layout_2 = QHBoxLayout()
@@ -102,6 +103,42 @@ class ModelManageFrame(QFrame):
 
         l_v_layout.addLayout(buttons_layout_2)
 
+        l_v_layout.addWidget(HorizontalSeparator())
+        l_v_layout.addWidget(SubtitleLabel(text='Model Properties'))
+
+        property_layout = QGridLayout()
+
+        self.normal_scale_label = CaptionLabel(parent=self, text="Normal Scale:")
+        self.normal_scale_edit = DoubleSpinBox(self)
+        self.normal_scale_edit.setSingleStep(0.1)
+        self.normal_scale_edit.setDisabled(True)
+        self.normal_scale_edit.setDecimals(2)
+        self.normal_scale_edit.valueChanged.connect(
+            lambda val: self.on_model_property_changed('normal_scale', val))
+        property_layout.addWidget(self.normal_scale_label, 0, 0)
+        property_layout.addWidget(self.normal_scale_edit, 0, 1)
+
+        self.small_scale_label = CaptionLabel(parent=self, text="Small Scale:")
+        self.small_scale_edit = DoubleSpinBox(self)
+        self.small_scale_edit.setSingleStep(0.1)
+        self.small_scale_edit.setDisabled(True)
+        self.small_scale_edit.setDecimals(2)
+        self.small_scale_edit.valueChanged.connect(
+            lambda val: self.on_model_property_changed('small_scale', val))
+        property_layout.addWidget(self.small_scale_label, 1, 0)
+        property_layout.addWidget(self.small_scale_edit, 1, 1)
+
+        self.anchor_label = CaptionLabel(parent=self, text="Anchor:")
+        self.anchor_edit = DoubleSpinBox(self)
+        self.anchor_edit.setSingleStep(0.1)
+        self.anchor_edit.setDecimals(2)
+        self.anchor_edit.setDisabled(True)
+        self.anchor_edit.valueChanged.connect(lambda val: self.on_model_property_changed('anchor', val))
+        property_layout.addWidget(self.anchor_label, 2, 0)
+        property_layout.addWidget(self.anchor_edit, 2, 1)
+
+        l_v_layout.addLayout(property_layout)
+
         l_v_layout.setStretch(0, 1)
         l_v_layout.setStretch(1, 1)
 
@@ -112,6 +149,7 @@ class ModelManageFrame(QFrame):
 
         self.model_list = []
         self.display_model_list = []
+        self.current_model_index = -1
 
         self.teaching_tip = None
         self.need_update = False
@@ -130,7 +168,7 @@ class ModelManageFrame(QFrame):
             self,
             "Select your model file.",
             "",
-            "Model Files (*.model3.json *.model.json)"
+            "Model Files (*.model3.json *.model.json model.json)"
         )
 
         if not file_path:
@@ -175,9 +213,18 @@ class ModelManageFrame(QFrame):
 
             self.model_list_widget.removeItem(index)
             self.meta_data.remove_model(index)
-
             self.renumber_models()
-            self.model_list_widget.setCurrentIndex(index)
+
+            if index > 0:
+                new_index = index - 1
+            elif len(self.model_list_widget.items) > 0:
+                new_index = 0
+            else:
+                new_index = -1
+
+            if new_index >= 0:
+                self.model_list_widget.setCurrentIndex(new_index)
+                self.on_model_selection_changed(new_index)
 
     def add_model(self):
         model = self.online_model_combo_box.currentText()
@@ -239,6 +286,39 @@ class ModelManageFrame(QFrame):
         completer.setMaxVisibleItems(20)
         self.online_model_combo_box.setCompleter(completer)
         self.online_model_combo_box.addItems(self.display_model_list)
+
+    def on_model_selection_changed(self, index: int):
+        self.current_model_index = index
+        self.normal_scale_edit.blockSignals(True)
+        self.small_scale_edit.blockSignals(True)
+        self.anchor_edit.blockSignals(True)
+
+        if 0 <= index < len(self.meta_data.models):
+            model = self.meta_data.models[index]
+
+            self.normal_scale_edit.setValue(model.get('normal_scale', 2.1))
+            self.small_scale_edit.setValue(model.get('small_scale', 1.8))
+            self.anchor_edit.setValue(model.get('anchor', 0.5))
+
+            self.normal_scale_edit.setEnabled(True)
+            self.small_scale_edit.setEnabled(True)
+            self.anchor_edit.setEnabled(True)
+        else:
+            self.normal_scale_edit.setValue(0.00)
+            self.small_scale_edit.setValue(0.00)
+            self.anchor_edit.setValue(0.00)
+            self.normal_scale_edit.setEnabled(False)
+            self.small_scale_edit.setEnabled(False)
+            self.anchor_edit.setEnabled(False)
+
+        self.normal_scale_edit.blockSignals(False)
+        self.small_scale_edit.blockSignals(False)
+        self.anchor_edit.blockSignals(False)
+
+    def on_model_property_changed(self, key: str, val: float):
+        if self.current_model_index >= 0:
+            self.meta_data.models[self.current_model_index][key] = val
+            self.meta_data.model_updated.emit(self.meta_data.models[self.current_model_index])
 
     def preview_model(self):
         model = self.online_model_combo_box.currentText()

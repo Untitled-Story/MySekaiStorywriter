@@ -44,6 +44,9 @@ class MetaData(QObject):
                 "downloaded": model['downloaded'],
                 "motions": model['motions'],
                 "expressions": model['expressions'],
+                "normal_scale": model.get("normal_scale", 2.1),
+                "small_scale": model.get("small_scale", 1.8),
+                "anchor": model.get("anchor", 0.5),
             })
             i += 1
         self._models = result
@@ -76,15 +79,26 @@ class MetaData(QObject):
         else:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                motions_data: dict = data["FileReferences"].get('Motions')
 
-                if motions_data:
-                    local_motions = motions_data.keys()
-                    for motion in local_motions:
-                        if motion.startswith("face_"):
-                            expressions.append(motion)
-                        else:
+                if 'motions' in data:
+                    # Cubism2
+                    motions_data: dict = data.get('motions')
+                    if motions_data:
+                        local_motions = motions_data.keys()
+                        for motion in local_motions:
                             motions.append(motion)
+
+                else:
+                    # Cubism4
+                    motions_data: dict = data["FileReferences"].get('Motions')
+
+                    if motions_data:
+                        local_motions = motions_data.keys()
+                        for motion in local_motions:
+                            if motion.startswith("face_"):
+                                expressions.append(motion)
+                            else:
+                                motions.append(motion)
 
         if not id_:
             id_ = len(self._models)
@@ -96,6 +110,9 @@ class MetaData(QObject):
             "downloaded": downloaded,
             "motions": motions,
             "expressions": expressions,
+            "normal_scale": 2.1,
+            "small_scale": 1.8,
+            "anchor": 0.5,
         }
         self.model_updated.emit(data)
         self._models.append(data)

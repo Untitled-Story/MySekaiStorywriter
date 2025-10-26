@@ -1,6 +1,5 @@
 from ._downloading_flyout import DownloadingFlyout
 from ._image_display import ImageDisplayWidget
-from ._input_metadata_message_box import InputMetadataMessageBox
 from ._live2d_widget import Live2DWidget
 from ._my_splash_screen import MySplashScreen
 from ._save_file_message_box import SaveFileMessageBox

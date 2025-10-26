@@ -72,18 +72,20 @@ class BaseSnippet:
                             new_list.append(process_data(item))
                         elif isinstance(item, enum.Enum):
                             new_list.append(item.value)
+                        elif isinstance(item, float):
+                            new_list.append(round(item, 2))
                         else:
                             new_list.append(item)
                     result[key] = new_list
                 elif isinstance(value, enum.Enum):
                     result[key] = value.value
+                elif isinstance(value, float):
+                    result[key] = round(value, 2)
                 else:
                     result[key] = value
             return result
 
-        data = {
-            'type': self.type
-        }
+        data = {'type': self.type}
         properties = process_data(self.properties)
         data.update(properties)
         data = to_ordered_dict(data)
@@ -120,7 +122,7 @@ class HideTalkSnippet(BaseSnippet):
 
 class LayoutAppearSnippet(BaseSnippet):
     def __init__(self, model_id: int, from_side: Sides, from_offset: float, to_side: Sides, to_offset: float,
-                 motion: str, facial: str, move_speed: MoveSpeed):
+                 motion: str, facial: str, move_speed: MoveSpeed, hologram: bool):
         super().__init__(
             'LayoutAppear',
             {
@@ -135,7 +137,8 @@ class LayoutAppearSnippet(BaseSnippet):
                 },
                 'motion': motion,
                 'facial': facial,
-                'moveSpeed': move_speed
+                'moveSpeed': move_speed,
+                'hologram': hologram
             }
         )
 
@@ -239,7 +242,7 @@ SNIPPETS = [
     ChangeBackgroundImageSnippet(0),
     ChangeLayoutModeSnippet(LayoutModes.Normal),
     HideTalkSnippet(),
-    LayoutAppearSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, '', '', MoveSpeed.Normal),
+    LayoutAppearSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, '', '', MoveSpeed.Normal, False),
     LayoutClearSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, MoveSpeed.Normal),
     MotionSnippet(-1, '', ''),
     MoveSnippet(-1, Sides.Center, 0.0, Sides.Center, 0.0, MoveSpeed.Normal),
