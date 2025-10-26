@@ -27,7 +27,7 @@ def get_free_port():
 
 CACHE_DIR = "./cache/"
 CACHE_MAP_PATH = os.path.join(CACHE_DIR, "cache_map.json")
-CACHE_EXPIRE_SECONDS = 3 * 24 * 3600  # 3 days
+CACHE_EXPIRE_SECONDS = 15 * 24 * 3600
 
 
 class FastAPIServer:
@@ -56,15 +56,20 @@ class FastAPIServer:
             with open(CACHE_MAP_PATH, "w", encoding="utf-8") as f:
                 f.write(json.dumps(caches))
         else:
-            with open(CACHE_MAP_PATH, "r", encoding="utf-8") as f:
-                try:
-                    caches = json.loads(f.read())
-                except json.JSONDecodeError:
-                    caches = {}
+            try:
+                with open(CACHE_MAP_PATH, "r", encoding="utf-8") as f:
+                    caches = json.load(f)
+                if not isinstance(caches, dict):
+                    raise ValueError("Invalid cache map structure")
+            except (json.JSONDecodeError, ValueError):
+                caches = {}
+                with open(CACHE_MAP_PATH, "w", encoding="utf-8") as f:
+                    f.write(json.dumps(caches))
+                print("cache_map.json corrupted, recreated empty file.")
 
         def update_cache_map():
-            with open(CACHE_MAP_PATH, "w", encoding="utf-8") as f:
-                json.dump(caches, f, indent=2, ensure_ascii=False)
+            with open(CACHE_MAP_PATH, "w", encoding="utf-8") as file:
+                json.dump(caches, file, indent=2, ensure_ascii=False)
 
         app.add_middleware(
             CORSMiddleware,
@@ -74,7 +79,8 @@ class FastAPIServer:
             allow_headers=["*"],
         )
 
-        client = httpx.AsyncClient(verify=False)
+        limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
+        client = httpx.AsyncClient(verify=False, timeout=10, limits=limits)
 
         def gen_cache(md5_url: str, resp: httpx.Response):
             etag = resp.headers.get("etag")
@@ -112,14 +118,14 @@ class FastAPIServer:
                 cache_path = os.path.join(CACHE_DIR, f"{etag_original}.cache")
 
                 if time.time() - timestamp < CACHE_EXPIRE_SECONDS and os.path.exists(cache_path):
-                    print(f"Cache valid (within 3 days): {md5_url}")
+                    print(f"Cache valid (within 15 days): {md5_url}")
                     return FileResponse(cache_path)
 
                 etag_decoded = unquote_plus(etag_original)
                 try:
                     check_resp = await client.get(parsed_url, headers={
                         "If-None-Match": f"\"{etag_decoded}\""
-                    }, timeout=3)
+                    })
                 except httpx.HTTPError:
                     print(f"HTTP error, using cache: {md5_url}")
                     return FileResponse(cache_path) if os.path.exists(cache_path) else await get_and_gen_cache(md5_url,
