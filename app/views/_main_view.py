@@ -114,9 +114,9 @@ class BuildStoryThread(QThread):
             models_data.append({
                 "id": model['id'],
                 "model": rel_model_path,
-                "normal_scale": model['normal_scale'],
-                "small_scale": model['small_scale'],
-                "anchor": model['anchor'],
+                "normal_scale": round(model['normal_scale'], 2),
+                "small_scale": round(model['small_scale'], 2),
+                "anchor": round(model['anchor'], 2),
             })
 
             if not model['downloaded']:
@@ -448,7 +448,8 @@ class MainView(QFrame):
             f.write(data_json)
         self._property_widget.reset()
         current_index = self._list_widget.currentRow()
-        self._property_widget.set_snippet(self.current_snippets[current_index], self.meta_data)
+        if len(self.current_snippets) > 0:
+            self._property_widget.set_snippet(self.current_snippets[current_index], self.meta_data)
         self.save_message_box.close()
 
     def _on_load_clicked(self) -> None:

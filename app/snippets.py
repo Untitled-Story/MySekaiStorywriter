@@ -72,18 +72,20 @@ class BaseSnippet:
                             new_list.append(process_data(item))
                         elif isinstance(item, enum.Enum):
                             new_list.append(item.value)
+                        elif isinstance(item, float):
+                            new_list.append(round(item, 2))
                         else:
                             new_list.append(item)
                     result[key] = new_list
                 elif isinstance(value, enum.Enum):
                     result[key] = value.value
+                elif isinstance(value, float):
+                    result[key] = round(value, 2)
                 else:
                     result[key] = value
             return result
 
-        data = {
-            'type': self.type
-        }
+        data = {'type': self.type}
         properties = process_data(self.properties)
         data.update(properties)
         data = to_ordered_dict(data)
