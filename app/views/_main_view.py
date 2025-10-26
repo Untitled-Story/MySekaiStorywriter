@@ -100,7 +100,7 @@ class BuildStoryThread(QThread):
         for model in self.models:
             rel_model_path = str(os.path.join(
                 model['model_name'],
-                model['model_name'] + ".model3.json"
+                model['model_name'] + ''.join(Path(model['path']).suffixes)
             )).replace("\\", "/")
 
             model_path = os.path.join(
@@ -115,6 +115,9 @@ class BuildStoryThread(QThread):
             models_data.append({
                 "id": model['id'],
                 "model": rel_model_path,
+                "normal_scale": model['normal_scale'],
+                "small_scale": model['small_scale'],
+                "anchor": model['anchor'],
             })
 
             if not model['downloaded']:
@@ -483,10 +486,16 @@ class MainView(QFrame):
                 model_name = file_name_with_ext.split('.model3.json')[0]
             elif '.model.json' in file_name_with_ext:
                 model_name = file_name_with_ext.split('.model.json')[0]
+            elif file_name_with_ext == 'model.json':
+                model_name = 'model'
             else:
                 raise RuntimeError(f"What is the model name: {file_name_with_ext}")
 
-            self.meta_data.add_model(
+            normal_scale = model.get("normal_scale")
+            small_scale = model.get("small_scale")
+            anchor = model.get("anchor")
+
+            added_model_data = self.meta_data.add_model(
                 model_name,
                 os.path.join(
                     base_path,
@@ -496,6 +505,13 @@ class MainView(QFrame):
                 True,
                 id_=model['id']
             )
+
+            if normal_scale is not None:
+                added_model_data['normal_scale'] = normal_scale
+            if small_scale is not None:
+                added_model_data['small_scale'] = small_scale
+            if anchor is not None:
+                added_model_data['anchor'] = anchor
 
         for image in images_def:
             image_name = Path(image['image'].split('/')[-1]).stem

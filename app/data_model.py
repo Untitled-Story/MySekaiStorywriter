@@ -44,6 +44,9 @@ class MetaData(QObject):
                 "downloaded": model['downloaded'],
                 "motions": model['motions'],
                 "expressions": model['expressions'],
+                "normal_scale": model.get("normal_scale", 2.1),
+                "small_scale": model.get("small_scale", 1.8),
+                "anchor": model.get("anchor", 0.5),
             })
             i += 1
         self._models = result
@@ -107,6 +110,9 @@ class MetaData(QObject):
             "downloaded": downloaded,
             "motions": motions,
             "expressions": expressions,
+            "normal_scale": 2.1,
+            "small_scale": 1.8,
+            "anchor": 0.5,
         }
         self.model_updated.emit(data)
         self._models.append(data)
