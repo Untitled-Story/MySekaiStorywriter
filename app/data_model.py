@@ -76,15 +76,26 @@ class MetaData(QObject):
         else:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                motions_data: dict = data["FileReferences"].get('Motions')
 
-                if motions_data:
-                    local_motions = motions_data.keys()
-                    for motion in local_motions:
-                        if motion.startswith("face_"):
-                            expressions.append(motion)
-                        else:
+                if 'motions' in data:
+                    # Cubism2
+                    motions_data: dict = data.get('motions')
+                    if motions_data:
+                        local_motions = motions_data.keys()
+                        for motion in local_motions:
                             motions.append(motion)
+
+                else:
+                    # Cubism4
+                    motions_data: dict = data["FileReferences"].get('Motions')
+
+                    if motions_data:
+                        local_motions = motions_data.keys()
+                        for motion in local_motions:
+                            if motion.startswith("face_"):
+                                expressions.append(motion)
+                            else:
+                                motions.append(motion)
 
         if not id_:
             id_ = len(self._models)
