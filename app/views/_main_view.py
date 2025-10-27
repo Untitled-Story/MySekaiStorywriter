@@ -97,9 +97,12 @@ class BuildStoryThread(QThread):
     def run(self):
         models_data = []
         for model in self.models:
+            print(f"Saving: {model}")
+            suffix = '.model3.json' if model['version'] == 3 else '.model.json'
+
             rel_model_path = str(os.path.join(
                 model['model_name'],
-                model['model_name'] + ''.join(Path(model['path']).suffixes)
+                model['model_name'] + suffix
             )).replace("\\", "/")
 
             model_path = os.path.join(
@@ -440,7 +443,6 @@ class MainView(QFrame):
 
         build_thread.built.connect(self._on_story_built)
         build_thread.start()
-
 
     def _on_story_built(self, data: OrderedDict, file_path: str) -> None:
         with open(file_path, 'w+', encoding='utf-8') as f:
