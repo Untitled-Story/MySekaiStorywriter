@@ -43,6 +43,7 @@ class MetaData(QObject):
                 "path": model['path'],
                 "downloaded": model['downloaded'],
                 "motions": model['motions'],
+                "version": model['version'],
                 "expressions": model['expressions'],
                 "normal_scale": model.get("normal_scale", 2.1),
                 "small_scale": model.get("small_scale", 1.8),
@@ -75,7 +76,7 @@ class MetaData(QObject):
                     motions.extend(result['common']['motions'])
                 if 'expressions' in result['common']:
                     expressions.extend(result['common']['expressions'])
-
+            model_version = 3
         else:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -87,7 +88,7 @@ class MetaData(QObject):
                         local_motions = motions_data.keys()
                         for motion in local_motions:
                             motions.append(motion)
-
+                    model_version = 2
                 else:
                     # Cubism4
                     motions_data: dict = data["FileReferences"].get('Motions')
@@ -99,6 +100,7 @@ class MetaData(QObject):
                                 expressions.append(motion)
                             else:
                                 motions.append(motion)
+                    model_version = 3
 
         if not id_:
             id_ = len(self._models)
@@ -110,6 +112,7 @@ class MetaData(QObject):
             "downloaded": downloaded,
             "motions": motions,
             "expressions": expressions,
+            "version": model_version,
             "normal_scale": 2.1,
             "small_scale": 1.8,
             "anchor": 0.5,
