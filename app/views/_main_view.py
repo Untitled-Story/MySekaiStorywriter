@@ -275,10 +275,13 @@ class MainView(QFrame):
         down_button.clicked.connect(self._on_down_clicked)
         delete_button = TransparentToolButton(FluentIcon.DELETE, parent=self)
         delete_button.clicked.connect(self._on_delete_clicked)
+        copy_button = TransparentToolButton(FluentIcon.COPY, parent=self)
+        copy_button.clicked.connect(self._on_copy_clicked)
 
         command_bar.addWidget(up_button)
         command_bar.addWidget(down_button)
         command_bar.addWidget(delete_button)
+        command_bar.addWidget(copy_button)
 
         command_bar.addSeparator()
 
@@ -417,6 +420,16 @@ class MainView(QFrame):
                 self._property_widget.set_snippet(self.current_snippets[next_row], self.meta_data)
             else:
                 self._property_widget.clear_properties()
+
+    def _on_copy_clicked(self) -> None:
+        current_row = self._list_widget.currentRow()
+        if current_row < 0:
+            return
+
+        snippet_to_copy = self.current_snippets[current_row]
+        new_snippet = snippet_to_copy.copy()
+        self._add_snippet_instance(new_snippet)
+        self._renumber_snippets()
 
     def _on_save_clicked(self) -> None:
         file_path, _ = QFileDialog.getSaveFileName(
