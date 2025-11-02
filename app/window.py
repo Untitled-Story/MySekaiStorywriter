@@ -52,13 +52,23 @@ class Window(FluentWindow):
         self.addSubInterface(self.data_view, FluentIcon.LIBRARY, 'Library')
 
     def _initialize_window(self):
-        self.resize(1536, 864)
+        # 1. 首先获取主屏幕的可用几何信息 (这会正确处理缩放比例)
+        desktop = QGuiApplication.primaryScreen().availableGeometry()
+        available_width = desktop.width()
+        available_height = desktop.height()
+
+        desired_width = int(available_width * 0.8)
+        desired_height = int(available_height * 0.8)
+
+        self.resize(desired_width, desired_height)
+
         self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.setWindowTitle("My Sekai Storywriter")
 
-        desktop = QGuiApplication.primaryScreen().availableGeometry()
-        w, h = desktop.width(), desktop.height()
-        self.move(w // 2 - self.width() // 2, h // 2 - self.height() // 2)
+        self.move(
+            available_width // 2 - self.width() // 2,
+            available_height // 2 - self.height() // 2
+        )
 
     def stop_server(self):
         if self.server.server.started:
