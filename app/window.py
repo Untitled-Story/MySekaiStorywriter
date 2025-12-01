@@ -52,7 +52,6 @@ class Window(FluentWindow):
         self.addSubInterface(self.data_view, FluentIcon.LIBRARY, 'Library')
 
     def _initialize_window(self):
-        # 1. 首先获取主屏幕的可用几何信息 (这会正确处理缩放比例)
         desktop = QGuiApplication.primaryScreen().availableGeometry()
         available_width = desktop.width()
         available_height = desktop.height()
