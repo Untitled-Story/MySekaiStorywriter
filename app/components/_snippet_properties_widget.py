@@ -82,6 +82,8 @@ class SnippetPropertiesWidget(QWidget):
         self._expanded_keys.clear()
         if self._current_snippet:
             self._expanded_keys.add("data")
+            self._expanded_keys.add("data.from")
+            self._expanded_keys.add("data.to")
         self._update_properties()
 
     def update_motions(self, widgets: dict[str, Any], model_id: int):
@@ -181,13 +183,6 @@ class SnippetPropertiesWidget(QWidget):
 
                 for i, item in enumerate(_value):
                     item_container = QFrame()
-                    item_container.setStyleSheet("""
-                        QFrame { 
-                            background-color: transparent; 
-                            border: 1px solid rgba(0, 0, 0, 0.06); 
-                            border-radius: 6px; 
-                        }
-                    """)
                     item_layout = QVBoxLayout(item_container)
                     item_layout.setContentsMargins(6, 6, 6, 6)
                     item_layout.setSpacing(2)

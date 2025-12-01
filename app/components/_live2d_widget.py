@@ -31,7 +31,7 @@ class Live2DWidget(QWidget):
             <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"></script>
             <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/pixi.js@7.4.3/dist/pixi.min.js"></script>
             <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/@pixi/gif@2.1.1/dist/pixi-gif.js"></script>
-            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/pixi-live2d-display-advanced/dist/index.min.js"></script>
+            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/pixi-live2d-display-advanced@0.5.6/dist/index.min.js"></script>
             <style>
                 html, body {margin:0; padding:0; overflow:hidden; height:100%; background-color: #F9FAFB;}
                 #canvas {width:100vw; height:100vh; display:block; background-color: #F9FAFB;}
