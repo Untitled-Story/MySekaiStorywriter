@@ -1,7 +1,13 @@
 import copy
 import enum
 from enum import Enum
+import re
 from app.utils import to_ordered_dict
+
+
+NEW_LINE_KEYWORDS = [
+    re.compile('|'.join([r'<br/?>', r'<老子要换行[!！]*>']), re.IGNORECASE)
+]
 
 
 class LayoutModes(Enum):
@@ -114,8 +120,8 @@ class BaseSnippet:
             result = {}
             for key, value in data_dict.items():
                 if isinstance(value, str):
-                    if '<br>' in value:
-                        value = value.replace('<br>', '\n')
+                    for keyword in NEW_LINE_KEYWORDS:
+                        value = keyword.sub('\n', value)
                 if isinstance(value, dict):
                     result[key] = process_data(value)
                 elif isinstance(value, list):
