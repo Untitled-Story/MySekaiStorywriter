@@ -6,7 +6,7 @@ from app.utils import to_ordered_dict
 
 
 NEW_LINE_KEYWORDS = [
-    re.compile(k, re.IGNORECASE) for k in [r'<br/?>', r'<老子要换行[!！]*>']
+    re.compile('|'.join([r'<br/?>', r'<老子要换行[!！]*>']), re.IGNORECASE)
 ]
 
 
