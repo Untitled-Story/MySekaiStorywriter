@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
 #        os: [ macos-13, ubuntu-latest, windows-latest, macos-13-xl ]
-        os: [ windows-latest ]
+        os: [ windows-2022 ]
       max-parallel: 2
     defaults:
       run:
@@ -70,7 +70,7 @@ jobs:
           file-version: ${{ env.VERSION }}
 
       - name: Build Windows or Linux
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-2022'
         uses: Nuitka/Nuitka-Action@main
         with:
           script-name: 'MySekaiStorywriter.py'
