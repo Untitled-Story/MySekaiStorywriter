@@ -11,8 +11,10 @@ from qfluentwidgets import FluentWindow, FluentIcon
 # noinspection PyUnresolvedReferences
 import app.resources_rc
 from .components import MySplashScreen
+from .config import SEKAI_LIVE2D_ASSET_BASE_URL
 from .data_model import MetaData
 from .server import FastAPIServer
+from .utils import HTTP_HEADERS
 from .views import MainView, DataView
 
 
@@ -84,10 +86,11 @@ class Window(FluentWindow):
     @asyncSlot(str)
     async def initialize_data(self):
         retry = Retry(total=10, backoff_factor=0.5)
-        async with httpx.AsyncClient(transport=RetryTransport(retry=retry)) as client:
+        async with httpx.AsyncClient(headers=HTTP_HEADERS, transport=RetryTransport(retry=retry)) as client:
             print(self.server_host)
+            model_list_url = f'{SEKAI_LIVE2D_ASSET_BASE_URL}/model_list.json'
             response = await client.get(
-                f'{self.server_host}/get/https://storage.sekai.best/sekai-live2d-assets/live2d/model_list.json')
+                f'{self.server_host}/get/{model_list_url}')
             model_list = response.json()
 
         self.data_loaded.emit(model_list)

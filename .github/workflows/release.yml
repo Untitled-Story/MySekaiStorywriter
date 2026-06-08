@@ -55,6 +55,25 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Inject build config
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          url = os.environ.get("SEKAI_LIVE2D_ASSET_BASE_URL", "").strip()
+          if not url:
+              print("SEKAI_LIVE2D_ASSET_BASE_URL is not set; using the default asset URL.")
+              raise SystemExit(0)
+
+          Path("app/build_config.py").write_text(
+              f"SEKAI_LIVE2D_ASSET_BASE_URL = {url.rstrip('/')!r}\n",
+              encoding="utf-8",
+          )
+          PY
+        env:
+          SEKAI_LIVE2D_ASSET_BASE_URL: ${{ vars.SEKAI_LIVE2D_ASSET_BASE_URL }}
+
       - name: Build for macOS
         if: matrix.os == 'macos-13' || matrix.os == 'macos-13-xlarge'
         uses: Nuitka/Nuitka-Action@main

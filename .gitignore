@@ -17,6 +17,7 @@
 
 # Generated files
 .idea/**/contentModel.xml
+app/build_config.py
 
 # Sensitive or high-churn files
 .idea/**/dataSources/

@@ -12,6 +12,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 
+from app.utils import HTTP_HEADERS
+
 
 def calculate_md5_string(text: str) -> str:
     r = mmh3.hash(text, 0, False)
@@ -80,7 +82,7 @@ class FastAPIServer:
         )
 
         limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
-        client = httpx.AsyncClient(verify=False, timeout=10, limits=limits)
+        client = httpx.AsyncClient(verify=False, timeout=10, limits=limits, headers=HTTP_HEADERS)
 
         def gen_cache(md5_url: str, resp: httpx.Response):
             etag = resp.headers.get("etag")
@@ -94,7 +96,7 @@ class FastAPIServer:
             update_cache_map()
 
         async def get_and_gen_cache(md5_url: str, url: str):
-            headers = {"Accept-Encoding": "identity"}
+            headers = {**HTTP_HEADERS, "Accept-Encoding": "identity"}
             resp = await client.get(url, headers=headers)
             if resp.status_code == 200:
                 gen_cache(md5_url, resp)
@@ -124,6 +126,7 @@ class FastAPIServer:
                 etag_decoded = unquote_plus(etag_original)
                 try:
                     check_resp = await client.get(parsed_url, headers={
+                        **HTTP_HEADERS,
                         "If-None-Match": f"\"{etag_decoded}\""
                     })
                 except httpx.HTTPError:

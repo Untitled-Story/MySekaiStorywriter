@@ -226,6 +226,11 @@ class BlackOutSnippet(BaseSnippet):
         super().__init__('BlackOut', {'duration': duration})
 
 
+class WhiteOutSnippet(BaseSnippet):
+    def __init__(self, duration: int):
+        super().__init__('WhiteOut', {'duration': duration})
+
+
 class DoParamSnippet(BaseSnippet):
     def __init__(self, model_id: int, params: list = None):
         if params is None:
@@ -262,6 +267,7 @@ SNIPPETS = [
     TelopSnippet(''),
     BlackInSnippet(500),
     BlackOutSnippet(500),
+    WhiteOutSnippet(500),
     DoParamSnippet(-1),
 ]
 

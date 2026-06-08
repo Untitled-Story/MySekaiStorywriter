@@ -61,21 +61,9 @@ class MetaData(QObject):
         if not downloaded:
             result = get_motions(path)
 
-            if result['model']:
-                if 'motions' in result['model']:
-                    motions.extend(result['model']['motions'])
-                if 'expressions' in result['model']:
-                    expressions.extend(result['model']['expressions'])
-            if result['special']:
-                if 'motions' in result['special']:
-                    motions.extend(result['special']['motions'])
-                if 'expressions' in result['special']:
-                    expressions.extend(result['special']['expressions'])
-            if result['common']:
-                if 'motions' in result['common']:
-                    motions.extend(result['common']['motions'])
-                if 'expressions' in result['common']:
-                    expressions.extend(result['common']['expressions'])
+            motions.extend(result['motions'])
+            motions.extend(result['additionalMotions'])
+            expressions.extend(result['facials'])
             model_version = 3
         else:
             with open(path, "r", encoding="utf-8") as f:

@@ -8,15 +8,15 @@ from pathlib import Path
 
 import httpx
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QListWidgetItem, QFileDialog
+from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QListWidgetItem, QFileDialog, \
+    QLabel
 from httpx_retries import RetryTransport, Retry
-from qfluentwidgets import CommandBar, setFont, Action, TransparentToolButton, FluentIcon, HorizontalSeparator, \
-    ListWidget
+from qfluentwidgets import TransparentToolButton, FluentIcon, ListWidget, PushButton, FlowLayout
 
 from app.components import SnippetPropertiesWidget, SaveFileMessageBox
 from app.data_model import MetaData
 from app.snippets import SNIPPETS, BaseSnippet, get_snippet, LayoutModes, Sides, MoveSpeed
-from app.utils import extract_url_path, get_motions, to_ordered_dict
+from app.utils import HTTP_HEADERS, extract_url_path, get_motions, to_ordered_dict
 
 
 class BuildStoryThread(QThread):
@@ -30,7 +30,7 @@ class BuildStoryThread(QThread):
         self.models = metadata.models
         self.base_path = os.path.dirname(self.file_path)
         self.retry = Retry(total=10, backoff_factor=0.5)
-        self.client = httpx.Client(transport=RetryTransport(retry=self.retry))
+        self.client = httpx.Client(headers=HTTP_HEADERS, transport=RetryTransport(retry=self.retry))
 
     def cancel(self):
         self.terminate()
@@ -56,23 +56,24 @@ class BuildStoryThread(QThread):
             return resp.content
 
     @staticmethod
-    def gen_motion_urls(info_url: str, motions_result: dict, type_: str) -> list:
+    def gen_motion_urls(motions_result: dict) -> list:
         result = []
-        base = extract_url_path(info_url)
 
-        if type_ == 'model':
-            base_motion = '/'.join(base.split('/')[:-2]) + "/motions"
-            base_facial = base_motion
-        else:
-            base_motion = base + "motion"
-            base_facial = base + "facial"
+        asset_url_base = motions_result["asset_url_base"]
+        motion_base_path = motions_result["motionBasePath"]
+        if motion_base_path:
+            motion_base_url = f"{asset_url_base}/motion/{motion_base_path}"
 
-        if 'motions' in motions_result[type_]:
-            for motion in motions_result[type_]['motions']:
-                result.append(f"{base_motion}/{motion}.motion3.json")
-        if 'expressions' in motions_result[type_]:
-            for expression in motions_result[type_]['expressions']:
-                result.append(f"{base_facial}/{expression}.motion3.json")
+            for motion in motions_result["motions"]:
+                result.append(f"{motion_base_url}/motion/{motion}.motion3.json")
+            for expression in motions_result["facials"]:
+                result.append(f"{motion_base_url}/facial/{expression}.motion3.json")
+
+        if motions_result["model_path"]:
+            additional_motion_url = f"{asset_url_base}/model/{motions_result['model_path']}/motions"
+            for motion in motions_result["additionalMotions"]:
+                result.append(f"{additional_motion_url}/{motion}.motion3.json")
+
         return result
 
     @staticmethod
@@ -90,7 +91,7 @@ class BuildStoryThread(QThread):
             file.write(r.content)
 
     async def download_motions(self, urls: list, motion_path: str, main_data: dict):
-        async with httpx.AsyncClient(transport=RetryTransport(retry=self.retry)) as client:
+        async with httpx.AsyncClient(headers=HTTP_HEADERS, transport=RetryTransport(retry=self.retry)) as client:
             tasks = [self.download_motion_and_save(client, url, motion_path, main_data) for url in urls]
             await asyncio.gather(*tasks)
 
@@ -161,17 +162,7 @@ class BuildStoryThread(QThread):
 
                 motions_result = get_motions(model['path'])
 
-                if motions_result['model']:
-                    url = motions_result['model_url']
-                    urls.extend(self.gen_motion_urls(url, motions_result, 'model'))
-
-                if motions_result['special']:
-                    url = motions_result['special_url']
-                    urls.extend(self.gen_motion_urls(url, motions_result, 'special'))
-
-                if motions_result['common_url']:
-                    url = motions_result['common_url']
-                    urls.extend(self.gen_motion_urls(url, motions_result, 'common'))
+                urls.extend(self.gen_motion_urls(motions_result))
 
                 motion_path = os.path.join(model_dir, 'motions')
                 os.makedirs(motion_path, exist_ok=True)
@@ -240,6 +231,9 @@ class BuildStoryThread(QThread):
         }), self.file_path)
 
 
+PRIMARY_SNIPPETS = {"Talk", "Motion", "Move", "LayoutAppear"}
+
+
 class MainView(QFrame):
     def __init__(self, metadata: MetaData, server_host: str, parent=None) -> None:
         super().__init__(parent)
@@ -252,52 +246,188 @@ class MainView(QFrame):
         self._main_layout = QVBoxLayout(self)
         self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        snippets_layout = QHBoxLayout()
-        self._main_layout.addLayout(snippets_layout)
-
-        command_bar = CommandBar()
-        command_bar.setSpaing(0)
-        command_bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-        setFont(command_bar, fontSize=14)
+        toolbar_frame = QFrame(self)
+        toolbar_frame.setObjectName("editorToolbar")
+        toolbar_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        top_layout = QHBoxLayout(toolbar_frame)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(12)
+        self._main_layout.addWidget(toolbar_frame)
 
         snippets = [snippet_type.type for snippet_type in SNIPPETS]
 
-        for snippet_type in snippets:
-            action = Action(text=snippet_type)
-            action.triggered.connect(lambda _, t=snippet_type: self._add_snippet(t))
-            command_bar.addAction(action)
+        snippets_panel = QFrame(toolbar_frame)
+        snippets_panel.setObjectName("snippetsPanel")
+        snippets_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        snippets_panel_layout = QVBoxLayout(snippets_panel)
+        snippets_panel_layout.setContentsMargins(0, 0, 0, 0)
+        snippets_panel_layout.setSpacing(6)
 
-        command_bar.addSeparator()
+        snippets_title = QLabel("Snippets", snippets_panel)
+        snippets_title.setObjectName("toolbarSectionTitle")
+        snippets_title.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        snippets_panel_layout.addWidget(snippets_title)
+
+        snippets_widget = QFrame(self)
+        snippets_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        snippets_flow_layout = FlowLayout(snippets_widget, needAni=False, isTight=False)
+        snippets_flow_layout.setContentsMargins(0, 0, 0, 0)
+        snippets_flow_layout.setHorizontalSpacing(6)
+        snippets_flow_layout.setVerticalSpacing(6)
+
+        for snippet_type in snippets:
+            snippet_button = PushButton(text=snippet_type, parent=snippets_widget)
+            snippet_button.setObjectName("snippetChip")
+            snippet_button.setProperty("tone", "primary" if snippet_type in PRIMARY_SNIPPETS else "neutral")
+            snippet_button.setToolTip(f"Add {snippet_type}")
+            snippet_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            snippet_button.setFixedHeight(28)
+            snippet_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            snippet_button.clicked.connect(lambda _, t=snippet_type: self._add_snippet(t))
+            snippets_flow_layout.addWidget(snippet_button)
+
+        snippets_panel_layout.addWidget(snippets_widget)
+
+        controls_widget = QFrame(toolbar_frame)
+        controls_widget.setObjectName("actionCluster")
+        controls_layout = QHBoxLayout(controls_widget)
+        controls_layout.setContentsMargins(6, 6, 6, 6)
+        controls_layout.setSpacing(4)
+        controls_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         up_button = TransparentToolButton(FluentIcon.UP, parent=self)
+        up_button.setObjectName("toolbarIconButton")
+        up_button.setFixedSize(34, 34)
+        up_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        up_button.setToolTip("Move up")
         up_button.clicked.connect(self._on_up_clicked)
         down_button = TransparentToolButton(FluentIcon.DOWN, parent=self)
+        down_button.setObjectName("toolbarIconButton")
+        down_button.setFixedSize(34, 34)
+        down_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        down_button.setToolTip("Move down")
         down_button.clicked.connect(self._on_down_clicked)
         delete_button = TransparentToolButton(FluentIcon.DELETE, parent=self)
+        delete_button.setObjectName("toolbarIconButton")
+        delete_button.setFixedSize(34, 34)
+        delete_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        delete_button.setToolTip("Delete")
         delete_button.clicked.connect(self._on_delete_clicked)
         copy_button = TransparentToolButton(FluentIcon.COPY, parent=self)
+        copy_button.setObjectName("toolbarIconButton")
+        copy_button.setFixedSize(34, 34)
+        copy_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        copy_button.setToolTip("Copy")
         copy_button.clicked.connect(self._on_copy_clicked)
 
-        command_bar.addWidget(up_button)
-        command_bar.addWidget(down_button)
-        command_bar.addWidget(delete_button)
-        command_bar.addWidget(copy_button)
+        def add_action_divider() -> None:
+            divider = QFrame(controls_widget)
+            divider.setObjectName("toolbarDivider")
+            divider.setFixedSize(1, 22)
+            controls_layout.addWidget(divider)
 
-        command_bar.addSeparator()
+        controls_layout.addWidget(up_button)
+        controls_layout.addWidget(down_button)
+        add_action_divider()
+        controls_layout.addWidget(delete_button)
+        controls_layout.addWidget(copy_button)
+        add_action_divider()
 
         load_button = TransparentToolButton(FluentIcon.FOLDER, parent=self)
+        load_button.setObjectName("toolbarIconButton")
+        load_button.setFixedSize(34, 34)
+        load_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        load_button.setToolTip("Load")
         load_button.clicked.connect(self._on_load_clicked)
-        command_bar.addWidget(load_button)
+        controls_layout.addWidget(load_button)
 
         save_button = TransparentToolButton(FluentIcon.SAVE, parent=self)
+        save_button.setObjectName("toolbarIconButton")
+        save_button.setFixedSize(34, 34)
+        save_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        save_button.setToolTip("Save")
         save_button.clicked.connect(self._on_save_clicked)
-        command_bar.addWidget(save_button)
+        controls_layout.addWidget(save_button)
 
-        snippets_layout.addWidget(command_bar, 1)
+        controls_widget.adjustSize()
+        controls_widget.setMinimumWidth(controls_widget.sizeHint().width())
 
-        # Top Separator
-        top_separator = HorizontalSeparator()
-        self._main_layout.addWidget(top_separator)
+        top_layout.addWidget(snippets_panel, 1)
+        top_layout.addWidget(controls_widget, 0, Qt.AlignmentFlag.AlignTop)
+
+        self.setStyleSheet("""
+            QFrame#editorToolbar {
+                background: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+                padding: 10px 12px;
+            }
+
+            QFrame#snippetsPanel {
+                background: transparent;
+                border: none;
+            }
+
+            QLabel#toolbarSectionTitle {
+                color: #64748B;
+                font-size: 12px;
+                font-weight: 600;
+                padding-left: 2px;
+            }
+
+            QPushButton#snippetChip {
+                background: #FFFFFF;
+                border: 1px solid #D7DFEA;
+                border-radius: 6px;
+                color: #1F2937;
+                font-size: 12px;
+                font-weight: 500;
+                padding: 2px 9px;
+            }
+
+            QPushButton#snippetChip:hover {
+                background: #F2F6FB;
+                border-color: #B8C5D6;
+            }
+
+            QPushButton#snippetChip:pressed {
+                background: #E7EDF5;
+            }
+
+            QPushButton#snippetChip[tone="primary"] {
+                background: #E8F7FA;
+                border-color: #A6DAE2;
+                color: #075B66;
+            }
+
+            QPushButton#snippetChip[tone="primary"]:hover {
+                background: #DDF2F6;
+                border-color: #76C8D4;
+            }
+
+            QFrame#actionCluster {
+                background: #FFFFFF;
+                border: 1px solid #DDE5EF;
+                border-radius: 8px;
+            }
+
+            #toolbarIconButton {
+                border-radius: 6px;
+            }
+
+            #toolbarIconButton:hover {
+                background: #EEF3F8;
+            }
+
+            #toolbarIconButton:pressed {
+                background: #E2EAF3;
+            }
+
+            QFrame#toolbarDivider {
+                background: #D9E1EC;
+                border: none;
+            }
+        """)
 
         # Center
         center_layout = QHBoxLayout()

@@ -29,75 +29,114 @@ class Live2DWidget(QWidget):
             <meta charset="utf-8">
             <script src="[[SERVER_HOST]]/get/https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
             <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"></script>
-            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/pixi.js@7.4.3/dist/pixi.min.js"></script>
-            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/@pixi/gif@2.1.1/dist/pixi-gif.js"></script>
-            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/pixi-live2d-display-advanced@0.5.6/dist/index.min.js"></script>
+            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/pixi.js@8.19.0/dist/pixi.min.js"></script>
+            <script>
+                PIXI.sound = { disableAutoPause: true };
+                PIXI.Sound = {
+                    from() {
+                        throw new Error("Sound is disabled in Live2D preview.");
+                    }
+                };
+                PIXI.webaudio = { WebAudioMedia: class WebAudioMedia {} };
+            </script>
+            <script src="[[SERVER_HOST]]/get/https://cdn.jsdelivr.net/npm/untitled-pixi-live2d-engine@1.2.0/dist/index.min.js"></script>
             <style>
                 html, body {margin:0; padding:0; overflow:hidden; height:100%; background-color: #F9FAFB;}
                 #canvas {width:100vw; height:100vh; display:block; background-color: #F9FAFB;}
+                #loading-ring {
+                    position: fixed;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 96px;
+                    height: 96px;
+                    display: none;
+                    pointer-events: none;
+                }
             </style>
         </head>
         <body>
             <canvas id="canvas"></canvas>
+            <img id="loading-ring" src="[[SERVER_HOST]]/resources/ring.gif" alt="">
             <script>
             let app = null;
             let currentModel = null;
-            let ring = null;
 
-            function initializeApp() {
+            let appInitPromise = null;
+            const loadingRing = document.getElementById("loading-ring");
+
+            function showLoadingRing() {
+                loadingRing.style.display = "block";
+            }
+
+            function hideLoadingRing() {
+                loadingRing.style.display = "none";
+            }
+
+            async function initializeApp() {
                 if (!app) {
-                    app = new PIXI.Application({
-                        view: document.getElementById("canvas"),
+                    if (PIXI.live2d.config) {
+                        PIXI.live2d.config.sound = false;
+                    }
+
+                    if (PIXI.extensions && PIXI.live2d.Live2DPlugin) {
+                        PIXI.extensions.add(PIXI.live2d.Live2DPlugin);
+                    }
+
+                    app = new PIXI.Application();
+                    appInitPromise = app.init({
+                        canvas: document.getElementById("canvas"),
                         autoStart: true,
                         resizeTo: window,
+                        preference: "webgl",
+                        autoDensity: true,
+                        resolution: window.devicePixelRatio,
                         transparent: true,
                         backgroundAlpha: 0
                     });
+                    await appInitPromise;
 
                     window.addEventListener('resize', () => {
                         if (currentModel) {
-                            currentModel.x = app.screen.width / 2;
-                            currentModel.y = app.screen.height / 2;
+                            currentModel.position.set(app.screen.width / 2, app.screen.height / 2);
                         }
                     });
+                } else if (appInitPromise) {
+                    await appInitPromise;
                 }
             }
 
             function replaceLive2DModel(modelUrl) {
-                initializeApp();
-
-                if (currentModel) {
-                    app.stage.removeChild(currentModel);
-                    currentModel = null;
-                }
-
                 (async function main() {
-                    if (!ring) {
-                        ring = await PIXI.Assets.load('[[SERVER_HOST]]/resources/ring.gif');
+                    await initializeApp();
+
+                    if (currentModel) {
+                        app.stage.removeChild(currentModel);
+                        currentModel.destroy();
+                        currentModel = null;
                     }
-                
-                    ring.anchor.set(0.5);
-                    ring.x = app.screen.width / 2;
-                    ring.y = app.screen.height / 2;
-                    app.stage.addChild(ring);
-                
-                    const model = await PIXI.live2d.Live2DModel.from(modelUrl, {
-                        autoFocus: false,
-                        autoHitTest: false,
-                        breathDepth: 0.5
-                    });
+
+                    showLoadingRing();
+                    let model = null;
+
+                    try {
+                        model = await PIXI.live2d.Live2DModel.from(modelUrl, {
+                            autoFocus: false,
+                            autoHitTest: false,
+                            breathDepth: 0.5
+                        });
+                    } finally {
+                        hideLoadingRing();
+                    }
 
                     app.stage.addChild(model);
 
                     model.anchor.set(0.5);
                     model.scale.set(0.25);
 
-                    model.x = app.screen.width / 2;
-                    model.y = app.screen.height / 2;
+                    model.position.set(app.screen.width / 2, app.screen.height / 2);
 
                     currentModel = model;
-                    
-                    app.stage.removeChild(ring);
                 })();
             }
             </script>
